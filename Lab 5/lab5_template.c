@@ -69,38 +69,40 @@ int main(void) {
 	char output[21] = "";
 	while(1)
 	{
+
 	    int i;
 	    c = uart_receive();
-	    if(c!='\r')
+
+	    if(c!='\r' && count <20)
 	    {
-	       output[count] = c;
-	       count++;
-	       uart_sendChar(c);
-	    }
-	    else
-	    {
-	        uart_sendChar(c);
+	       output[count] = c;   //
+	       count++;             //Update output string
+	       uart_sendChar(c); //Echo back character
+
 	    }
 
+//Once there are 20 characters or the user presses enter
 	    if(count >= 20 || c == '\r')
 	           {
-	               lcd_printf("%s", output);
-	               uart_sendChar('\r');
-	               uart_sendChar('\n');
-	               uart_sendStr(output);
+
+	               lcd_printf("%s", output); //Print the string on the LCD
+	               uart_sendChar('\n'); //
+	               uart_sendChar('\r'); //
+	               uart_sendStr(output); // Print the string on the PuTTY Terminal
+
 
 	               for (i = 0; i<21;i++)  //clear output
 	               {
 	                   output[i] = 0;
 	               }
-
-	               uart_sendChar('\r');
+	               timer_waitMillis(1); //This timer seems to help prevent PuTTY printing errors
 	               uart_sendChar('\n');
+	               uart_sendChar('\r');
 
 	               count = 0;
 
-	               uart_sendChar('\r');
 	               uart_sendChar('\n');
+	               uart_sendChar('\r');
 	           }
 	}
 
