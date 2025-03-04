@@ -11,6 +11,7 @@
 #include <inc/tm4c123gh6pm.h>
 #include <stdint.h>
 #include "uart.h"
+#include "Timer.h"
 
 void uart_init(void){
 	//TODO
@@ -25,17 +26,17 @@ void uart_init(void){
   while ((SYSCTL_PRUART_R & 0b000010) == 0) {};
 
   //enable alternate functions on port B pins
-  GPIO_PORTB_AFSEL_R |= 0b11111111;
+  GPIO_PORTB_AFSEL_R |= 0b00000011;
 
   //enable digital functionality on port B pins
-  GPIO_PORTB_DEN_R |= 0b11111111;
+  GPIO_PORTB_DEN_R |= 0b00000011;
 
   //enable UART1 Rx and Tx on port B pins
-  GPIO_PORTB_PCTL_R = 0b00000011;
+  GPIO_PORTB_PCTL_R = 0x00000011;
 
   //calculate baud rate
-  uint16_t iBRD = 8; //use equations
-  uint16_t fBRD = 44; //use equations
+  uint16_t iBRD = 16000000/(16*115200); //use equations
+  uint16_t fBRD = ((((float)16000000/(16*115200))-iBRD) * 64 + 0.5); //use equations
 
   //turn off UART1 while setting it up
   UART1_CTL_R &= 0b00000000;
@@ -47,7 +48,7 @@ void uart_init(void){
 
   //set frame, 8 data bits, 1 stop bit, no parity, no FIFO
   //note: this write to LCRH must be after the BRD assignments
-  UART1_LCRH_R = 0b01100000;
+  UART1_LCRH_R = 0b01110000;
 
   //use system clock as source
   //note from the datasheet UARTCCC register description:
@@ -61,7 +62,7 @@ void uart_init(void){
   //Good to be explicit in your code
   //Be careful to not clear RX and TX enable bits
   //(either preserve if already set or set them)
-  UART1_CTL_R = 0b00000011;
+  UART1_CTL_R = 0x301;
 
 }
 
@@ -82,6 +83,7 @@ void uart_sendStr(const char *data){
 	//TODO for reference see lcd_puts from lcd.c file
    while(*data != '\0'){
        uart_sendChar(*data);
+       timer_waitMillis(1); //This seems to be necessary for strings >= 14 characters
        data++;
    }
 }
