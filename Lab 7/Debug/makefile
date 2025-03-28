@@ -12,16 +12,16 @@ GEN_CMDS__FLAG :=
 ORDERED_OBJS += \
 "./Timer.obj" \
 "./button.obj" \
+"./lab5_template.obj" \
 "./lab6-interrupt_template.obj" \
 "./lab6_template.obj" \
 "./lab7.obj" \
+"./lab7_tejal.obj" \
 "./lcd.obj" \
 "./movement.obj" \
 "./open_interface.obj" \
-"./scan_functions.obj" \
 "./tm4c123gh6pm_startup_ccs.obj" \
 "./uart-interrupt.obj" \
-"./uart.obj" \
 "../libcybotScan.lib" \
 "../libcybotUART.lib" \
 "../tm4c123gh6pm.cmd" \
@@ -155,8 +155,8 @@ Lab\ 7.out: $(OBJS) $(CMD_SRCS) $(LIB_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "Timer.obj" "button.obj" "lab6-interrupt_template.obj" "lab6_template.obj" "lab7.obj" "lcd.obj" "movement.obj" "open_interface.obj" "scan_functions.obj" "tm4c123gh6pm_startup_ccs.obj" "uart-interrupt.obj" "uart.obj" 
-	-$(RM) "Timer.d" "button.d" "lab6-interrupt_template.d" "lab6_template.d" "lab7.d" "lcd.d" "movement.d" "open_interface.d" "scan_functions.d" "tm4c123gh6pm_startup_ccs.d" "uart-interrupt.d" "uart.d" 
+	-$(RM) "Timer.obj" "button.obj" "lab5_template.obj" "lab6-interrupt_template.obj" "lab6_template.obj" "lab7.obj" "lab7_tejal.obj" "lcd.obj" "movement.obj" "open_interface.obj" "tm4c123gh6pm_startup_ccs.obj" "uart-interrupt.obj" 
+	-$(RM) "Timer.d" "button.d" "lab5_template.d" "lab6-interrupt_template.d" "lab6_template.d" "lab7.d" "lab7_tejal.d" "lcd.d" "movement.d" "open_interface.d" "tm4c123gh6pm_startup_ccs.d" "uart-interrupt.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

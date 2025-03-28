@@ -26,7 +26,7 @@ volatile int start_flag = 0;
 volatile int stop_flag = 0;// flag to tell the main program a special command was received
 
 void uart_interrupt_init(void){
-	//TODO
+    //TODO
   //enable clock to GPIO port B
   SYSCTL_RCGCGPIO_R |= 0b000010;
 
