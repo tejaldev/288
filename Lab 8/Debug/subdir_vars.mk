@@ -25,8 +25,10 @@ C_SRCS += \
 ../lcd.c \
 ../movement.c \
 ../open_interface.c \
+../scan_functions.c \
 ../tm4c123gh6pm_startup_ccs.c \
-../uart-interrupt.c 
+../uart-interrupt.c \
+../uart.c 
 
 C_DEPS += \
 ./Timer.d \
@@ -41,8 +43,10 @@ C_DEPS += \
 ./lcd.d \
 ./movement.d \
 ./open_interface.d \
+./scan_functions.d \
 ./tm4c123gh6pm_startup_ccs.d \
-./uart-interrupt.d 
+./uart-interrupt.d \
+./uart.d 
 
 OBJS += \
 ./Timer.obj \
@@ -57,8 +61,10 @@ OBJS += \
 ./lcd.obj \
 ./movement.obj \
 ./open_interface.obj \
+./scan_functions.obj \
 ./tm4c123gh6pm_startup_ccs.obj \
-./uart-interrupt.obj 
+./uart-interrupt.obj \
+./uart.obj 
 
 OBJS__QUOTED += \
 "Timer.obj" \
@@ -73,8 +79,10 @@ OBJS__QUOTED += \
 "lcd.obj" \
 "movement.obj" \
 "open_interface.obj" \
+"scan_functions.obj" \
 "tm4c123gh6pm_startup_ccs.obj" \
-"uart-interrupt.obj" 
+"uart-interrupt.obj" \
+"uart.obj" 
 
 C_DEPS__QUOTED += \
 "Timer.d" \
@@ -89,8 +97,10 @@ C_DEPS__QUOTED += \
 "lcd.d" \
 "movement.d" \
 "open_interface.d" \
+"scan_functions.d" \
 "tm4c123gh6pm_startup_ccs.d" \
-"uart-interrupt.d" 
+"uart-interrupt.d" \
+"uart.d" 
 
 C_SRCS__QUOTED += \
 "../Timer.c" \
@@ -105,7 +115,9 @@ C_SRCS__QUOTED += \
 "../lcd.c" \
 "../movement.c" \
 "../open_interface.c" \
+"../scan_functions.c" \
 "../tm4c123gh6pm_startup_ccs.c" \
-"../uart-interrupt.c" 
+"../uart-interrupt.c" \
+"../uart.c" 
 
 

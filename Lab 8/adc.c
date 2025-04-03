@@ -33,9 +33,10 @@ void ADC0_Init(void){ //ADC0_InitSWTriggerSeq3_Ch9
     ADC0_EMUX_R &= ~0xF000;       // 11) seq3 is software trigger
     ADC0_SSMUX3_R &= ~0x000F;
     ADC0_SSMUX3_R |= 0xA;           // 12) set channel
-    ADC0_SSCTL3_R = 0x0006;       // 13) no TS0 D0, yes IE0 END0
+    ADC0_SSCTL3_R |= 0x0006;       // 13) no TS0 D0, yes IE0 END0
     ADC0_IM_R &= ~0x0008;         // 14) disable SS3 interrupts
     ADC0_ACTSS_R |= 0x0008;       // 15) enable sample sequencer 3
+    ADC0_SAC_R |= 0x4;
 }
 
 int read(void){
