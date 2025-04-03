@@ -7,3 +7,4 @@ Lab 4: Push button digital inputs and cyBot-PC communication
 Lab 5: Communicating using UART
 Lab 6: Using interrupts
 Lab 7: Using IR and PING sensors along with test field navigation.
+
