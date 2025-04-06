@@ -1,0 +1,1 @@
+ping_template.obj: ../ping_template.c
