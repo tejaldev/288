@@ -109,7 +109,24 @@ def socket_thread():
     print(send_message)
     
 
+
+
+
+
+
     
+##############################################################
+    #This is all test code right now
+    #The code that works well is the key detection bit and the initialization
+    #The code below is trying to demonstrate hitting a button and having it read data
+    #This is not useful for the bot but can be referenced
+    #If you want to implement something after understanding this code,
+    #I recommend commenting the a button detection here and replacing it with the
+    #buton you want to implement
+    #The buttons to implement are a scan button, w, a, and d
+    #Good luck!
+    #For reference code use simple-GUI-sensor-Socket-or-UART-client.py in the 4- folder
+
     while send_message != 'quit\n':
         global handle_flag
         if ('a' in curr_keys):
