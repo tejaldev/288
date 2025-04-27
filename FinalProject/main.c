@@ -4,6 +4,15 @@
 #include "movement.h"
 #include "servo.h"
 #include "adc.h"
+#include "ping.h"
+
+//USE BOT 3 FOR GOOD RESULTS
+
+float adcValues[92];
+int right_bound = 0;
+int left_bound = 180;
+int num_degrees = 2;
+
 
 /**
  * main.c
@@ -16,9 +25,10 @@ int main(void)
     lcd_init();
     uart_interrupt_init();
     servo_init();
+    ping_init();
     ADC0_Init();
 
-    int num_degrees = 2;
+
 
     while (1) {
         char bit = uart_receive_nonblocking();
@@ -29,6 +39,7 @@ int main(void)
 //        sprintf(toSendToPutty1, "Sensor Value: %d", sensor);
 //        uart_sendStr(toSendToPutty1);
 
+//         w to go forward, a and d for turns, s for scan, b for break (end), and q to stop any function
         if (bit == 'w') {
            //Drive forward while collision detecting
             double sum = 0; // distance member in oi_t struct is type double
@@ -163,17 +174,79 @@ int main(void)
         }  else if (bit == 's') {
             //Scan environment
             int i;
-            for (i = 0; i <= 180 && uart_receive_nonblocking() != 'q'; i += num_degrees) {
-                servo_move(i);
-                uint32_t adc_data = ADC0_InSeq3();
-                float distance = pow((adc_data / 8843.5), -1.799);
-                char toSendToPutty[50];
-                sprintf(toSendToPutty, "Distance: %.2fcm", distance);
-                uart_sendStr(toSendToPutty);
-                timer_waitMillis(100);
-            }
-        }
 
+            for (i = right_bound; i <= left_bound && uart_receive_nonblocking() != 'q'; i += num_degrees) {
+                servo_move(i);
+                float adc_distance = 0;
+                int j;
+                for (j = 0; j < 3; j++) {
+                    uint32_t adc_data = ADC0_InSeq3();
+                    adc_distance += pow((adc_data / 8843.5), -1.799);
+                    timer_waitMillis(50);
+                }
+                adc_distance /= 3;
+                adcValues[i / num_degrees] = adc_distance;
+
+//                char toSendToPutty[50];
+//                sprintf(toSendToPutty, "Degree: %d  ADC Distance: %.2f", i, adc_distance);
+//                uart_sendStr(toSendToPutty);
+            }
+            if (i > left_bound) {
+                int i;
+                    int startObj = -1;
+                    int objectCount = 0;
+                    int objectPositions[10];
+                    int objectDegWidths[10];
+
+                    char toSendToPutty[20];
+                    sprintf(toSendToPutty, "Detecting Objects");
+                    uart_sendStr(toSendToPutty);
+
+                    for (i = right_bound + num_degrees; i < left_bound; i+=num_degrees) {
+                        float value = adcValues[i/num_degrees];
+                        float difference = value - adcValues[(i/num_degrees) - 1];
+                        //detect start object
+                        if (difference <= -15 && startObj == -1 && value < 100) {
+                            startObj = i;
+                        }
+                        //detect end of object
+                        else if (difference > 15 && startObj != -1) {
+                            int endObj = (i-num_degrees);
+                            int objectDegWidth = endObj - startObj;
+                            if (objectDegWidth > 0) {
+                                int middleObj = (startObj + endObj) / 2;
+                                objectPositions[objectCount] = middleObj;
+                                objectDegWidths[objectCount] = objectDegWidth;
+                            objectCount++;
+                            }
+                            startObj = -1;
+                        }
+                        //detect if end scan on object
+                        else if (i == left_bound - num_degrees && startObj != -1) {
+                            int endObj = i;
+                            if (endObj - startObj > num_degrees) {
+                                int middleObj = (startObj + endObj) / 2;
+                                objectPositions[objectCount] = middleObj;
+                                objectCount++;
+                            }
+                        }
+                    }
+                    int j;
+                    for (j = 0; j < objectCount; j++)
+                    {
+                        int objectPosition = objectPositions[j];
+                        servo_move(objectPosition);
+                        timer_waitMillis(500);
+                        ping_trigger();
+                        float ping_distance = ping_getDistance();
+                        int degWidth = objectDegWidths[j];
+                        float actualWidth = 2.0 * 3.14159265 *ping_distance * (degWidth / 360.0);
+                        char toSendToPutty[50];
+                        sprintf(toSendToPutty, "Object at %d degrees has a distance of %.2fcm and width of %.2fcm", objectPosition, ping_distance, actualWidth);
+                        uart_sendStr(toSendToPutty);
+                    }            }
+            uart_sendStr("END");
+        }
     }
 
     oi_free(sensor_data);
