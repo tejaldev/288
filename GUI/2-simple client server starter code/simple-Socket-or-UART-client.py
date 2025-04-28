@@ -39,7 +39,7 @@ while send_message != 'quit\n':
         print("wait for server reply\n")
         rx_message = cybot.readline()      # Wait for a message, readline expects message to end with "\n"
         print("Got a message from server: " + rx_message.decode() + "\n") # Convert message from bytes to String (i.e., decode)
-        send_message = input("Enter a message (enter quit to exit):") + '\n' # Enter next message to send to server
+        send_message = input("Enter a message (enter quit to exit):") # Enter next message to send to server
         cybot.write(send_message.encode()) # Convert String to bytes (i.e., encode), and send data to the server
         
 print("Client exiting, and closing file descriptor, and/or network socket\n")
