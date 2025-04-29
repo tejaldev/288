@@ -1,0 +1,18 @@
+  ''' 
+                elif decoded[0] == 'w':
+                    file_object = open(full_path + forward_file,'w') # Open the file: file_object is just a variable for the file "handler" returned by open()
+                    
+                    #file_object.write(rx_message.decode()[1:])
+                    print(rx_message.decode()[1:])
+                    
+                    while (rx_message.decode().strip() != "END"): # Collect sensor data until "END" recieved
+                        rx_message = cybot.readline()   # Wait for sensor response, readline expects message to end with "\n"
+                        if rx_message.decode().strip()[0] == 'q':
+                            file_object.write(rx_message.decode()[1:])
+                            print(rx_message.decode()[1:])
+                        else:
+                            file_object.write(rx_message.decode())  # Write a line of sensor data to the file
+                            print(rx_message.decode()) # Convert message from bytes to String (i.e., decode), then print
+
+                    file_object.close() # Important to close file once you are done with it!!      
+                '''  
