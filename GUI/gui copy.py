@@ -18,6 +18,13 @@ first_key = None
 key_is_pressed = False
 key_is_released = False
 update_gui = True
+window = None
+polar_fig = None
+polar_ax = None
+xy_fig = None
+xy_ax = None
+
+command_queue = queue.Queue()
 
 
 
@@ -38,6 +45,7 @@ def main():
     
 
     window = tk.Tk() # Create a Tk GUI Window
+    window.title("CyBot Control Interface")
     # Quit command Button
     quit_command_Button = tk.Button(text ="Press to Quit", command = send_quit)
     quit_command_Button.pack()  # Pack the button into the window for display
@@ -49,12 +57,12 @@ def main():
 
     # Create a Thread that will run a fuction assocated with a user defined "target" function.
     # In this case, the target function is the Client socket code
-    my_thread = threading.Thread(target=socket_thread) # Create the thread
+    my_thread = threading.Thread(target=socket_thread, daemon=True) # Create the thread
     my_thread.start() # Start the thread
 
     embed_initial_plot()
 
-    plot_thread = threading.Thread(target=update_plot_thread)
+    plot_thread = threading.Thread(target=update_plot_thread, daemon=True)
     plot_thread.start()
 
     # Start event loop so the GUI can detect events such as button clicks, key presses, etc.
@@ -88,24 +96,31 @@ def key_down(event):
         if first_key is None and event.char in ['w', 'a', 's', 'd', 'b']:
             first_key = event.char
             key_is_pressed = True
+            command_queue.put(event.char)
         
 
 def key_up(event):
     global curr_keys
     global first_key
     global key_is_released
+    global update_gui
     if event.char in curr_keys:
         curr_keys.remove(event.char)
 
         if event.char == first_key:
             first_key = None
             key_is_released = True
+            update_gui = True
+            command_queue.put('q')
 
 
 def update_plot_thread():
+    global update_gui
     while True:
-        update_plot()
-        time.sleep(1)  # so it does't run constantly
+        if update_gui:
+            update_gui = False
+            update_plot()
+        time.sleep(0.1)  # so it does't run constantly
 
 def embed_initial_plot():
     global polar_fig, polar_ax
@@ -114,80 +129,91 @@ def embed_initial_plot():
     polar_fig, polar_ax = plt.subplots(subplot_kw={'projection': 'polar'})
     xy_fig, xy_ax = plt.subplots()
 
-    # Open these plots in separate windows
+    # Configure initial plot settings
+    polar_ax.set_title("CyBot Sensor Scan (0-180 Degrees)")
+    polar_ax.set_rmax(120)
+    polar_ax.grid(True)
+    
+    xy_ax.set_xlim(-10, 10)
+    xy_ax.set_ylim(-10, 10)
+    xy_ax.set_xlabel('X-axis')
+    xy_ax.set_ylabel('Y-axis')
+    xy_ax.grid(True)
+    
+    # Show the plots in separate windows
     plt.figure(polar_fig.number)
-    plt.show(block=False)  # Show polar plot in its own window
+    plt.show(block=False)
     plt.figure(xy_fig.number)
-    plt.show(block=False)  # Show xy plot in its own window
-
-    # Schedule the first plot update
-    window.after(100, update_plot)
+    plt.show(block=False)
 
 def update_plot():
     global polar_fig, polar_ax, polar_canvas
     global xy_fig, xy_ax, xy_canvas
     global update_gui
-    if update_gui:
-        update_gui = False
-        # Read the data from the file
-        degree_pattern = r"Degree: (\d+)"
-        distance_pattern = r"ADC Distance: (\d+\.\d+)"
-        ob_ang_pattern = r"Object at (\d+)"
-        ob_r_pattern = r"has a distance of (\d+\.\d+)"
-        ob_r_width = r"and width of (\d+\.\d+)"
     
-        with open(full_path + sensor_file, "r") as file:
-            data = file.read()
+    # Read the data from the file
+    degree_pattern = r"Degree: (\d+)"
+    distance_pattern = r"ADC Distance: (\d+\.\d+)"
+    ob_ang_pattern = r"Object at (\d+)"
+    ob_r_pattern = r"has a distance of (\d+\.\d+)"
+    ob_r_width = r"and width of (\d+\.\d+)"
+    
+    with open(full_path + sensor_file, "r") as file:
+        data = file.read()
 
-        degrees = [int(deg) for deg in re.findall(degree_pattern, data)]
-        degrees = np.array(degrees)
-        #degrees = moving_avg(degrees)
+    degrees = [int(deg) for deg in re.findall(degree_pattern, data)]
+    degrees = np.array(degrees)
+    #degrees = moving_avg(degrees)
         
-        distances = [float(dist) for dist in re.findall(distance_pattern, data)]
-        distances = np.array(distances)
-        angle_radians = (np.pi/180) * degrees
+    distances = [float(dist) for dist in re.findall(distance_pattern, data)]
+    distances = np.array(distances)
+    angle_radians = (np.pi/180) * degrees
 
-        ob_ang = [int(ob_deg) for ob_deg in re.findall(ob_ang_pattern, data)]
-        ob_r = [float(ob_dist) for ob_dist in re.findall(ob_r_pattern, data)]
-        ob_width = [float(ob_diam) for ob_diam in re.findall(ob_r_width, data)]
+    ob_ang = [int(ob_deg) for ob_deg in re.findall(ob_ang_pattern, data)]
+    ob_r = [float(ob_dist) for ob_dist in re.findall(ob_r_pattern, data)]
+    ob_width = [float(ob_diam) for ob_diam in re.findall(ob_r_width, data)]
 
-        ob_ang = np.array(ob_ang)
-        ob_rad = (np.pi/180) * ob_ang
-        ob_r = np.array(ob_r)
-        ob_width = np.array(ob_width)
+    ob_ang = np.array(ob_ang)
+    ob_rad = (np.pi/180) * ob_ang
+    ob_r = np.array(ob_r)
+    ob_width = np.array(ob_width)
       
 
-        # Clear the existing axes to prevent plotting over previous data
-        polar_ax.clear()
+    # Clear the existing axes to prevent plotting over previous data
+    polar_ax.clear()
 
-        # Plot the new data
-        polar_ax.plot(angle_radians, distances, color='r', linewidth=4.0)
-        #polar_ax.plot(ob_rad, ob_r, 'ro', markersize = 10, label='Dots', markerfacecolor='yellow', markeredgecolor='black', linestyle='None')
-        sc = polar_ax.scatter(ob_rad, ob_r, s= ob_width ** 2, c='blue')
-        polar_ax.set_xlabel('Distance (cm)', fontsize=14.0)
-        polar_ax.set_ylabel('Angle (degrees)', fontsize=14.0)
-        polar_ax.xaxis.set_label_coords(0.5, 0.15)
-        polar_ax.tick_params(axis='both', which='major', labelsize=14)
-        polar_ax.set_rmax(120)
-        polar_ax.set_rticks([10, 25, 50, 75, 100])
-        polar_ax.set_rlabel_position(-22.5)
-        polar_ax.set_thetamax(180)
-        polar_ax.set_xticks(np.arange(0, np.pi + 0.1, np.pi / 4))
-        polar_ax.grid(True)
-        polar_ax.set_title("Mock-up Polar Plot of CyBot Sensor Scan from 0 to 180 Degrees", size=14, y=1.0, pad=-24)
+    # Plot the new data
+    polar_ax.plot(angle_radians, distances, color='r', linewidth=4.0)
+    
+    if len(ob_ang) > 0:
+        polar_ax.scatter(ob_rad, ob_r, s=ob_width**2, c='blue')
+    polar_ax.set_xlabel('Distance (cm)', fontsize=14.0)
+    polar_ax.set_ylabel('Angle (degrees)', fontsize=14.0)
+    polar_ax.xaxis.set_label_coords(0.5, 0.15)
+    polar_ax.tick_params(axis='both', which='major', labelsize=14)
+    polar_ax.set_rmax(120)
+    polar_ax.set_rticks([10, 25, 50, 75, 100])
+    polar_ax.set_rlabel_position(-22.5)
+    polar_ax.set_thetamax(180)
+    polar_ax.set_xticks(np.arange(0, np.pi + 0.1, np.pi / 4))
+    polar_ax.grid(True)
+    polar_ax.set_title("Mock-up Polar Plot of CyBot Sensor Scan from 0 to 180 Degrees", size=14, y=1.0, pad=-24)
 
-        # Redraw the plot
-        plt.draw()
+    # Redraw the plot
+    #plt.figure(polar_fig.number)
+    plt.draw()
 
-        xy_ax.clear()
-        xy_ax.set_xlim(-10,10)
-        xy_ax.set_ylim(-10,10)
-        xy_ax.plot([0, 1, 2], [0, 1, 0], color='green')
-        xy_ax.set_xlabel('X-axis')
-        xy_ax.set_ylabel('Y-axis')
-        #xy_ax.legend()
-        xy_ax.grid(True)
-        plt.draw()
+    xy_ax.clear()
+    xy_ax.set_xlim(-10,10)
+    xy_ax.set_ylim(-10,10)
+    xy_ax.plot([0, 1, 2], [0, 1, 0], color='green')
+    xy_ax.set_xlabel('X-axis')
+    xy_ax.set_ylabel('Y-axis')
+    #xy_ax.legend()
+    xy_ax.grid(True)
+
+    #plt.figure(xy_fig.number)
+    plt.draw()
 
 
         # Schedule the next update (every 1000ms)
@@ -226,7 +252,7 @@ def read_cybot(cybot):
                             print(rx_message.decode()) # Convert message from bytes to String (i.e., decode), then print
 
                     file_object.close() # Important to close file once you are done with it!!
-
+                    update_gui = True   
                 elif decoded[0] in ('w', 'a', 'd'):
                     file_object = open(full_path + movement_file,'a') # Open the file: file_object is just a variable for the file "handler" returned by open()
                     
@@ -244,7 +270,7 @@ def read_cybot(cybot):
                             print(rx_message.decode()) # Convert message from bytes to String (i.e., decode), then print
 
                     file_object.close() # Important to close file once you are done with it!!   
-
+                    update_gui = True
 
 
 
@@ -280,7 +306,7 @@ def socket_thread():
                   
     cybot = cybot_socket.makefile("rbw", buffering=0)  # makefile creates a file object out of a socket:  https://pythontic.com/modules/socket/makefile
 
-    read_thread = threading.Thread(target=read_cybot, args=(cybot,))
+    read_thread = threading.Thread(target=read_cybot, args=(cybot,), daemon=True)
     read_thread.start() 
 
     send_message = "Connection Initialized"
@@ -291,33 +317,27 @@ def socket_thread():
 
 
 
-    curr_cmd = 0
-    prev_cmd = 0
+    last_command = None
+
     while send_message != 'quit\n':
-        
-        if key_is_pressed:
-            key_is_pressed = False
-            curr_cmd = first_key
-        
-        if key_is_released:
-            update_gui = True
-            key_is_released = False
-            curr_cmd = 'q'
+        try:
+            command = command_queue.get(timeout=0.1)
+
+            if command != last_command or command == 'q':
+                cybot.write(command.encode())
+                last_command = command
+                if command == 'quit\n':
+                    break
             
+            command_queue.task_done()
             
+        except queue.Empty:
             
-            
-            
-        
-        
-        if curr_cmd != 0:
-            send_str = curr_cmd
-            cybot.write(send_str.encode())
+            pass    
             
         
-        if curr_cmd != 0:
-            prev_cmd = curr_cmd
-        curr_cmd = 0
+        
+      
         
 
 
