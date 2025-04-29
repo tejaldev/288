@@ -34,7 +34,8 @@ void servo_move(uint16_t degrees) {
     if (degrees > 180){
         degrees = 180;
     }
-    float deg_to_fraction = 1.7 * (degrees/180.0); //reconfigure 1.7 based on cybot
+    // 1.9 for Bot 3
+    float deg_to_fraction = 1.63 * (degrees/180.0); //reconfigure 1.7 based on cybot
     float deg_in_time = 0.02 - (deg_to_fraction * 0.001);
     uint16_t clock_cycle = 57856 - (320000 - (deg_in_time * 16000000));
 

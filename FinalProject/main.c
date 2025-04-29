@@ -1,10 +1,10 @@
 #include "Timer.h"
 #include "uart-interrupt.h"
 #include "open_interface.h"
-#include "movement.h"
 #include "servo.h"
 #include "adc.h"
 #include "ping.h"
+
 
 //USE BOT 3 FOR GOOD RESULTS
 
@@ -21,12 +21,14 @@ int main(void)
 {
     oi_t *sensor_data = oi_alloc(); // do this only once at start of main()
     oi_init(sensor_data);
-    timer_init(); // Must be called before lcd_init(), which uses timer functions
-    lcd_init();
+    timer_init();
     uart_interrupt_init();
     servo_init();
     ping_init();
     ADC0_Init();
+
+    int prevLeft = 0;
+    int prevRight = 0;
 
 
 
@@ -43,95 +45,118 @@ int main(void)
         if (bit == 'w') {
            //Drive forward while collision detecting
             double sum = 0; // distance member in oi_t struct is type double
-            oi_setWheels(50, 50); //move forward
+
+            int16_t baseSpeed = 50;
+            double kP = 0.3;
+
+            oi_setWheels(baseSpeed, baseSpeed); //move forward
             while (uart_receive_nonblocking() != 'q') {
                 oi_update(sensor_data);
                 sum += sensor_data->distance; // use -> notation since pointer
                 char toSendToPutty[50];
                 sprintf(toSendToPutty, "Drove Forward: %.2f cm", sum/10);
                 uart_sendStr(toSendToPutty);
-                if (sensor_data->bumpLeft) {
-                    sprintf(toSendToPutty, "Hit object on left");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
-                if (sensor_data->bumpRight) {
-                     sprintf(toSendToPutty, "Hit object on right");
-                     uart_sendStr(toSendToPutty);
-                     move_backward(sensor_data, 100);
-                     sprintf(toSendToPutty, "Drove Back 10cm");
-                     uart_sendStr(toSendToPutty);
-                     break;
-                }
-                if (sensor_data->cliffFrontLeftSignal < 1000) {
-                    sprintf(toSendToPutty, "Hole Detected Front Left");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
-                if (sensor_data->cliffLeftSignal < 1000) {
-                    sprintf(toSendToPutty, "Hole Detected Left");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
-                if (sensor_data->cliffFrontRightSignal < 1000) {
-                    sprintf(toSendToPutty, "Hole Detected Front Right");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
-                if (sensor_data->cliffRightSignal < 1000) {
-                    sprintf(toSendToPutty, "Hole Detected Right");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
-                if (sensor_data->cliffFrontLeftSignal > 2500) {
-                    sprintf(toSendToPutty, "OB Detected Front Left");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
-                if (sensor_data->cliffLeftSignal > 2500) {
-                    sprintf(toSendToPutty, "OB Detected Left");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
-                if (sensor_data->cliffFrontRightSignal > 2500) {
-                    sprintf(toSendToPutty, "OB Detected Front Right");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
-                if (sensor_data->cliffRightSignal > 2500) {
-                    sprintf(toSendToPutty, "OB Detected Right");
-                    uart_sendStr(toSendToPutty);
-                    move_backward(sensor_data, 100);
-                    sprintf(toSendToPutty, "Drove Back 10cm");
-                    uart_sendStr(toSendToPutty);
-                    break;
-                }
+
+                int16_t leftEncoderDiff = sensor_data ->leftEncoderCount - prevLeft;
+                int16_t rightEncoderDiff = sensor_data ->rightEncoderCount - prevRight;
+                double distLeft = (leftEncoderDiff) * (72 * M_PI / 508.8);
+                double distRight = (rightEncoderDiff) * (72 * M_PI / 508.8);
+
+                double error = distLeft - distRight;
+
+                int16_t leftWheelSpeed = baseSpeed - (kP * error);
+                int16_t rightWheelSpeed = baseSpeed + (kP * error);
+
+                oi_setWheels(leftWheelSpeed, rightWheelSpeed);
+
+                prevLeft = sensor_data->leftEncoderCount;
+                prevRight = sensor_data->rightEncoderCount;
+
+
+
+//                if (sensor_data->bumpLeft) {
+//                    sprintf(toSendToPutty, "Hit object on left");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
+//                if (sensor_data->bumpRight) {
+//                     sprintf(toSendToPutty, "Hit object on right");
+//                     uart_sendStr(toSendToPutty);
+//                     move_backward(sensor_data, 100);
+//                     sprintf(toSendToPutty, "Drove Back 10cm");
+//                     uart_sendStr(toSendToPutty);
+//                     break;
+//                }
+//                if (sensor_data->cliffFrontLeftSignal < 1000) {
+//                    sprintf(toSendToPutty, "Hole Detected Front Left");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
+//                if (sensor_data->cliffLeftSignal < 1000) {
+//                    sprintf(toSendToPutty, "Hole Detected Left");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
+//                if (sensor_data->cliffFrontRightSignal < 1000) {
+//                    sprintf(toSendToPutty, "Hole Detected Front Right");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
+//                if (sensor_data->cliffRightSignal < 1000) {
+//                    sprintf(toSendToPutty, "Hole Detected Right");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
+//                if (sensor_data->cliffFrontLeftSignal > 2500) {
+//                    sprintf(toSendToPutty, "OB Detected Front Left");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
+//                if (sensor_data->cliffLeftSignal > 2500) {
+//                    sprintf(toSendToPutty, "OB Detected Left");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
+//                if (sensor_data->cliffFrontRightSignal > 2500) {
+//                    sprintf(toSendToPutty, "OB Detected Front Right");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
+//                if (sensor_data->cliffRightSignal > 2500) {
+//                    sprintf(toSendToPutty, "OB Detected Right");
+//                    uart_sendStr(toSendToPutty);
+//                    move_backward(sensor_data, 100);
+//                    sprintf(toSendToPutty, "Drove Back 10cm");
+//                    uart_sendStr(toSendToPutty);
+//                    break;
+//                }
             }
             oi_setWheels(0, 0);
+            uart_sendStr("END");
 
         } else if (bit == 'a') {
             //Turn left
@@ -145,6 +170,7 @@ int main(void)
                 uart_sendStr(toSendToPutty);
             }
             oi_setWheels(0, 0);
+            uart_sendStr("END");
         } else if (bit == 'd') {
             //Turn right
             double sum = 0;
@@ -157,6 +183,7 @@ int main(void)
                 uart_sendStr(toSendToPutty);
             }
             oi_setWheels(0, 0);
+            uart_sendStr("END");
 
         } else if (bit == 'b') {
             //Play sound before breaking
@@ -173,8 +200,11 @@ int main(void)
             break;
         }  else if (bit == 's') {
             //Scan environment
+            char toSendToPutty[20];
+            sprintf(toSendToPutty, "Scanning");
+            uart_sendStr(toSendToPutty);
             int i;
-
+//            servo_move(0); //for servo calibration
             for (i = right_bound; i <= left_bound && uart_receive_nonblocking() != 'q'; i += num_degrees) {
                 servo_move(i);
                 float adc_distance = 0;
@@ -186,10 +216,9 @@ int main(void)
                 }
                 adc_distance /= 3;
                 adcValues[i / num_degrees] = adc_distance;
-
-//                char toSendToPutty[50];
-//                sprintf(toSendToPutty, "Degree: %d  ADC Distance: %.2f", i, adc_distance);
-//                uart_sendStr(toSendToPutty);
+                char toSendToPutty1[50];
+                sprintf(toSendToPutty1, "Degree: %d  ADC Distance: %.2f", i, adc_distance);
+                uart_sendStr(toSendToPutty1);
             }
             if (i > left_bound) {
                 int i;
@@ -197,11 +226,9 @@ int main(void)
                     int objectCount = 0;
                     int objectPositions[10];
                     int objectDegWidths[10];
-
-                    char toSendToPutty[20];
-                    sprintf(toSendToPutty, "Detecting Objects");
-                    uart_sendStr(toSendToPutty);
-
+//                    char toSendToPutty[20];
+//                    sprintf(toSendToPutty, "Detecting Objects");
+//                    uart_sendStr(toSendToPutty);
                     for (i = right_bound + num_degrees; i < left_bound; i+=num_degrees) {
                         float value = adcValues[i/num_degrees];
                         float difference = value - adcValues[(i/num_degrees) - 1];
@@ -224,16 +251,17 @@ int main(void)
                         //detect if end scan on object
                         else if (i == left_bound - num_degrees && startObj != -1) {
                             int endObj = i;
+                            int objectDegWidth = endObj - startObj;
                             if (endObj - startObj > num_degrees) {
                                 int middleObj = (startObj + endObj) / 2;
                                 objectPositions[objectCount] = middleObj;
+                                objectDegWidths[objectCount] = objectDegWidth;
                                 objectCount++;
                             }
                         }
                     }
                     int j;
-                    for (j = 0; j < objectCount; j++)
-                    {
+                    for (j = 0; j < objectCount; j++) {
                         int objectPosition = objectPositions[j];
                         servo_move(objectPosition);
                         timer_waitMillis(500);
@@ -241,10 +269,11 @@ int main(void)
                         float ping_distance = ping_getDistance();
                         int degWidth = objectDegWidths[j];
                         float actualWidth = 2.0 * 3.14159265 *ping_distance * (degWidth / 360.0);
-                        char toSendToPutty[50];
-                        sprintf(toSendToPutty, "Object at %d degrees has a distance of %.2fcm and width of %.2fcm", objectPosition, ping_distance, actualWidth);
-                        uart_sendStr(toSendToPutty);
-                    }            }
+                        char toSendToPutty2[50];
+                        sprintf(toSendToPutty2, "Object at %d degrees has a distance of %.2fcm and width of %.2fcm", objectPosition, ping_distance, actualWidth);
+                        uart_sendStr(toSendToPutty2);
+                    }
+            }
             uart_sendStr("END");
         }
     }

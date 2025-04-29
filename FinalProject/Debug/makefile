@@ -12,10 +12,9 @@ GEN_CMDS__FLAG :=
 ORDERED_OBJS += \
 "./Timer.obj" \
 "./adc.obj" \
-"./lcd.obj" \
 "./main.obj" \
-"./movement.obj" \
 "./open_interface.obj" \
+"./ping.obj" \
 "./servo.obj" \
 "./tm4c123gh6pm_startup_ccs.obj" \
 "./uart-interrupt.obj" \
@@ -150,8 +149,8 @@ FinalProject.out: $(OBJS) $(CMD_SRCS) $(GEN_CMDS)
 # Other Targets
 clean:
 	-$(RM) $(EXE_OUTPUTS__QUOTED)
-	-$(RM) "Timer.obj" "adc.obj" "lcd.obj" "main.obj" "movement.obj" "open_interface.obj" "servo.obj" "tm4c123gh6pm_startup_ccs.obj" "uart-interrupt.obj" 
-	-$(RM) "Timer.d" "adc.d" "lcd.d" "main.d" "movement.d" "open_interface.d" "servo.d" "tm4c123gh6pm_startup_ccs.d" "uart-interrupt.d" 
+	-$(RM) "Timer.obj" "adc.obj" "main.obj" "open_interface.obj" "ping.obj" "servo.obj" "tm4c123gh6pm_startup_ccs.obj" "uart-interrupt.obj" 
+	-$(RM) "Timer.d" "adc.d" "main.d" "open_interface.d" "ping.d" "servo.d" "tm4c123gh6pm_startup_ccs.d" "uart-interrupt.d" 
 	-@echo 'Finished clean'
 	-@echo ' '
 

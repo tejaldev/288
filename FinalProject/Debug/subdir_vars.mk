@@ -11,10 +11,9 @@ CMD_SRCS += \
 C_SRCS += \
 ../Timer.c \
 ../adc.c \
-../lcd.c \
 ../main.c \
-../movement.c \
 ../open_interface.c \
+../ping.c \
 ../servo.c \
 ../tm4c123gh6pm_startup_ccs.c \
 ../uart-interrupt.c 
@@ -22,10 +21,9 @@ C_SRCS += \
 C_DEPS += \
 ./Timer.d \
 ./adc.d \
-./lcd.d \
 ./main.d \
-./movement.d \
 ./open_interface.d \
+./ping.d \
 ./servo.d \
 ./tm4c123gh6pm_startup_ccs.d \
 ./uart-interrupt.d 
@@ -33,10 +31,9 @@ C_DEPS += \
 OBJS += \
 ./Timer.obj \
 ./adc.obj \
-./lcd.obj \
 ./main.obj \
-./movement.obj \
 ./open_interface.obj \
+./ping.obj \
 ./servo.obj \
 ./tm4c123gh6pm_startup_ccs.obj \
 ./uart-interrupt.obj 
@@ -44,10 +41,9 @@ OBJS += \
 OBJS__QUOTED += \
 "Timer.obj" \
 "adc.obj" \
-"lcd.obj" \
 "main.obj" \
-"movement.obj" \
 "open_interface.obj" \
+"ping.obj" \
 "servo.obj" \
 "tm4c123gh6pm_startup_ccs.obj" \
 "uart-interrupt.obj" 
@@ -55,10 +51,9 @@ OBJS__QUOTED += \
 C_DEPS__QUOTED += \
 "Timer.d" \
 "adc.d" \
-"lcd.d" \
 "main.d" \
-"movement.d" \
 "open_interface.d" \
+"ping.d" \
 "servo.d" \
 "tm4c123gh6pm_startup_ccs.d" \
 "uart-interrupt.d" 
@@ -66,10 +61,9 @@ C_DEPS__QUOTED += \
 C_SRCS__QUOTED += \
 "../Timer.c" \
 "../adc.c" \
-"../lcd.c" \
 "../main.c" \
-"../movement.c" \
 "../open_interface.c" \
+"../ping.c" \
 "../servo.c" \
 "../tm4c123gh6pm_startup_ccs.c" \
 "../uart-interrupt.c" 

@@ -21,8 +21,6 @@
 #include <math.h>
 #include "Timer.h"
 #include <inc/tm4c123gh6pm.h>
-#include "lcd.h"
-
 
 #define M_PI 3.14159265358979323846
 #define BIT0        0x01
