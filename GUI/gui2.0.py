@@ -38,6 +38,11 @@ movement_file = 'movement.txt'
 position = [0.0, 0.0]
 heading = 0.0
 path = [[0.0], [0.0]]
+objects = [[], []]
+objects_width = []
+
+scan_theta = 0.0
+update_object_flag = False
 
 terminal_output = None
 message_log = deque(maxlen=3)
@@ -279,6 +284,13 @@ def update_plot():
     xy_ax.plot(path[0], path[1], color='green', linestyle='-', linewidth=2, label='Path')
     xy_ax.plot(position[0], position[1], 'ro', label='CyBot')
 
+    if update_object_flag:
+        update_objects(ob_r, ob_rad, ob_width)
+
+    size = 10 * np.power(objects_width, 2)
+    if len(ob_r) > 0:
+        xy_ax.scatter(objects[0], objects[1], s= size, c='blue')
+
     # Calculate arrow direction
     arrow_length = 5
     dx = arrow_length * np.cos(np.radians(heading))
@@ -313,6 +325,21 @@ def update_position(distance):
     path[0].append(position[0])
     path[1].append(position[1])
 
+def update_objects(ob_r, ob_rad, ob_width):
+    global update_object_flag
+    global objects, objects_width
+
+    update_object_flag = False
+
+    scan_theta_rad = scan_theta * np.pi /180
+
+    ob_x = ob_r * np.cos(ob_rad + scan_theta_rad) 
+    ob_y = ob_r * np.sin(ob_rad + scan_theta_rad)
+
+    objects[0].extend(ob_x.tolist())  
+    objects[1].extend(ob_y.tolist())
+    objects_width.extend([float(np.squeeze(w)) for w in ob_width])  
+
 def update_terminal(new_message):
     global terminal_output, message_log
     message_log.append(new_message)
@@ -326,6 +353,7 @@ def read_cybot(cybot):
     global update_gui
     global previous_distance  # Tracks last known total distance
     global previous_angle
+    global scan_theta, update_object_flag
 
     previous_distance = 0.0
     previous_angle = 0.0
@@ -349,6 +377,8 @@ def read_cybot(cybot):
                         decoded = rx_message.decode().strip()
                         update_terminal(decoded)
                         file_object.write(rx_message.decode())
+                scan_theta = heading - 90
+                update_object_flag = True
                 update_gui = True
 
             # Movement data handling
@@ -403,8 +433,8 @@ def socket_thread():
     global key_is_released
     global update_gui
 
-    #HOST = "192.168.1.1"  # Use this if using the actual Cybot
-    HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
+    HOST = "192.168.1.1"  # Use this if using the actual Cybot
+    #HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
     PORT = 288          # The port used by the server
     cybot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cybot_socket.connect((HOST, PORT))
