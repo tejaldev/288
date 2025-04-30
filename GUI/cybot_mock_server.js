@@ -10,15 +10,18 @@ const server = net.createServer((socket) => {
 
         if (command === 'w') {
             // Simulate driving forward
-            socket.write('wDrove Forward: 15.00 cm\n');
+            socket.write('wDrove Forward: 0.00 cm\n');
+            socket.write('Drove Forward: 15.00 cm\n');
             socket.write('END\n');
         } else if (command === 'a') {
             // Simulate turning left
-            socket.write('aTurned Left 90.00 degrees\n');
+            socket.write('aTurned Left 0.00 degrees\n');
+            socket.write('Turned Left 90.00 degrees\n');
             socket.write('END\n');
         } else if (command === 'd') {
             // Simulate turning right
-            socket.write('dTurned Right 90.00 degrees\n');
+            socket.write('dTurned Right 0.00 degrees\n');
+            socket.write('Turned Right 90.00 degrees\n');
             socket.write('END\n');
         } else if (command === 'q') {
             // Simulate key release
