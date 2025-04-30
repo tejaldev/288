@@ -216,44 +216,77 @@ def update_terminal(new_message):
 
 def read_cybot(cybot):
     global update_gui
+    global previous_distance  # Tracks last known total distance
+    global previous_angle
+
+    previous_distance = 0.0
+    previous_angle = 0.0
+
     while True:
         try:
             rx_message = cybot.readline()
             decoded = rx_message.decode().strip()
-            if decoded:
-                update_terminal(decoded)
 
-                if decoded[0] == 's':
-                    file_object = open(full_path + sensor_file,'w')
-                    file_object.write(rx_message.decode()[1:])
+            if not decoded:
+                continue
+
+            update_terminal(decoded)
+
+            # Sensor data handling
+            if decoded[0] == 's':
+                with open(full_path + sensor_file, 'w') as file_object:
+                    file_object.write(rx_message.decode()[1:])  # Skip 's'
                     while decoded != "END":
                         rx_message = cybot.readline()
                         decoded = rx_message.decode().strip()
                         update_terminal(decoded)
                         file_object.write(rx_message.decode())
-                    file_object.close()
-                    update_gui = True
-                elif decoded[0] in ('w', 'a', 'd'):
-                    file_object = open(full_path + movement_file,'a')
+                update_gui = True
+
+            # Movement data handling
+            elif decoded[0] in ('w', 'a', 'd'):
+                with open(full_path + movement_file, 'a') as file_object:
                     while decoded != "END":
                         rx_message = cybot.readline()
                         decoded_line = rx_message.decode().strip()
                         update_terminal(decoded_line)
-                        forward = re.search(r"Drove Forward: (\d+\.\d+)", decoded_line)
-                        left = re.search(r"Turned Left (\d+\.\d+)", decoded_line)
-                        right = re.search(r"Turned Right (\d+\.\d+)", decoded_line)
-                        if forward:
-                            update_position(float(forward.group(1)))
-                        elif left:
-                            update_heading(float(left.group(1)))
-                        elif right:
-                            update_heading(-float(right.group(1)))
+                        file_object.write(rx_message.decode())
+
+                        # Movement parsing
+                        forward_match = re.search(r"Drove Forward: (\d+\.\d+)", decoded_line)
+                        left_match = re.search(r"Turned Left: (\d+\.\d+)", decoded_line)
+                        right_match = re.search(r"Turned Right: (\d+\.\d+)", decoded_line)
+
+                        if forward_match:
+                            current_distance = float(forward_match.group(1))
+                            delta = current_distance - previous_distance
+                            previous_distance = current_distance
+                            update_position(delta)
+                            update_gui = True
+
+                        elif left_match:
+                            current_angle = float(left_match.group(1))
+                            delta = current_angle - previous_angle
+                            previous_angle = current_angle
+                            update_heading(delta)
+                            update_gui = True
+
+                        elif right_match:
+                            current_angle = float(right_match.group(1))
+                            delta = current_angle - previous_angle
+                            previous_angle = current_angle
+                            update_heading(-delta)
+                            update_gui = True
+
                         decoded = decoded_line
-                    file_object.close()
-                    update_gui = True
+
+                previous_distance = 0.0
+                previous_angle = 0.0
+
         except Exception as e:
             print(f"Error reading from cybot: {e}")
             break
+
 
 def socket_thread():
     global curr_keys
