@@ -299,7 +299,8 @@ def socket_thread():
     relative_path = "./"   # Path to sensor data file relative to this python script (./ means data file is in the same directory as this python script)
     full_path = os.path.join(absolute_path, relative_path) # Full path to sensor data file
     sensor_file = 'sensor-scan.txt' # Name of file you want to store sensor data from your sensor scan command
-    HOST = "192.168.1.1"  # The server's hostname or IP address
+    #HOST = "192.168.1.1"  # Use this if using the actual Cybot
+    HOST = "127.0.0.1" # Use this if using the MOCK Cybot
     PORT = 288        # The port used by the server
     cybot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)  # Create a socket object
     cybot_socket.connect((HOST, PORT))   # Connect to the socket  (Note: Server must first be running)

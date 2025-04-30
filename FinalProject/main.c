@@ -74,86 +74,86 @@ int main(void)
 
 
 
-//                if (sensor_data->bumpLeft) {
-//                    sprintf(toSendToPutty, "Hit object on left");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
-//                if (sensor_data->bumpRight) {
-//                     sprintf(toSendToPutty, "Hit object on right");
-//                     uart_sendStr(toSendToPutty);
-//                     move_backward(sensor_data, 100);
-//                     sprintf(toSendToPutty, "Drove Back 10cm");
-//                     uart_sendStr(toSendToPutty);
-//                     break;
-//                }
-//                if (sensor_data->cliffFrontLeftSignal < 1000) {
-//                    sprintf(toSendToPutty, "Hole Detected Front Left");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
-//                if (sensor_data->cliffLeftSignal < 1000) {
-//                    sprintf(toSendToPutty, "Hole Detected Left");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
-//                if (sensor_data->cliffFrontRightSignal < 1000) {
-//                    sprintf(toSendToPutty, "Hole Detected Front Right");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
-//                if (sensor_data->cliffRightSignal < 1000) {
-//                    sprintf(toSendToPutty, "Hole Detected Right");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
-//                if (sensor_data->cliffFrontLeftSignal > 2500) {
-//                    sprintf(toSendToPutty, "OB Detected Front Left");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
-//                if (sensor_data->cliffLeftSignal > 2500) {
-//                    sprintf(toSendToPutty, "OB Detected Left");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
-//                if (sensor_data->cliffFrontRightSignal > 2500) {
-//                    sprintf(toSendToPutty, "OB Detected Front Right");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
-//                if (sensor_data->cliffRightSignal > 2500) {
-//                    sprintf(toSendToPutty, "OB Detected Right");
-//                    uart_sendStr(toSendToPutty);
-//                    move_backward(sensor_data, 100);
-//                    sprintf(toSendToPutty, "Drove Back 10cm");
-//                    uart_sendStr(toSendToPutty);
-//                    break;
-//                }
+                if (sensor_data->bumpLeft) {
+                    sprintf(toSendToPutty, "Hit object on left");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
+                if (sensor_data->bumpRight) {
+                     sprintf(toSendToPutty, "Hit object on right");
+                     uart_sendStr(toSendToPutty);
+                     move_backward(sensor_data, 100);
+                     sprintf(toSendToPutty, "Drove Back 10cm");
+                     uart_sendStr(toSendToPutty);
+                     break;
+                }
+                if (sensor_data->cliffFrontLeftSignal < 1000) {
+                    sprintf(toSendToPutty, "Hole Detected Front Left");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
+                if (sensor_data->cliffLeftSignal < 1000) {
+                    sprintf(toSendToPutty, "Hole Detected Left");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
+                if (sensor_data->cliffFrontRightSignal < 1000) {
+                    sprintf(toSendToPutty, "Hole Detected Front Right");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
+                if (sensor_data->cliffRightSignal < 1000) {
+                    sprintf(toSendToPutty, "Hole Detected Right");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
+                if (sensor_data->cliffFrontLeftSignal > 2500) {
+                    sprintf(toSendToPutty, "OB Detected Front Left");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
+                if (sensor_data->cliffLeftSignal > 2500) {
+                    sprintf(toSendToPutty, "OB Detected Left");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
+                if (sensor_data->cliffFrontRightSignal > 2500) {
+                    sprintf(toSendToPutty, "OB Detected Front Right");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
+                if (sensor_data->cliffRightSignal > 2500) {
+                    sprintf(toSendToPutty, "OB Detected Right");
+                    uart_sendStr(toSendToPutty);
+                    move_backward(sensor_data, 100);
+                    sprintf(toSendToPutty, "Drove Back 10cm");
+                    uart_sendStr(toSendToPutty);
+                    break;
+                }
             }
             oi_setWheels(0, 0);
             uart_sendStr("END");
