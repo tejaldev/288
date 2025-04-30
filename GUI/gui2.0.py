@@ -285,15 +285,18 @@ def update_plot():
     dy = arrow_length * np.sin(np.radians(heading))
 
     # Annotate the direction with an arrow
-    xy_ax.annotate('', 
+    arrow_annotation = xy_ax.annotate('', 
         xy=(position[0] + dx, position[1] + dy),  # Target position
         xytext=(position[0], position[1]),  # Start position (CyBot)
         arrowprops=dict(facecolor='blue', edgecolor='blue', width=1.5, headwidth=6, headlength=8),
         label='Direction'
     )
 
-    # Draw legend and update canvas
-    xy_ax.legend()
+    # Create a custom legend entry for the annotation (since annotations cannot be directly added to legend)
+    arrow_handle = mlines.Line2D([], [], color='blue', marker='>', markersize=10, label='Direction')
+
+    # Draw legend and update canvas, including the custom arrow legend handle
+    xy_ax.legend(handles=[arrow_handle], loc='upper right')
     xy_canvas.draw()
 
 def update_heading(delta_angle):
