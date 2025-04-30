@@ -9,6 +9,7 @@ import re
 import queue
 from collections import deque
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
+import matplotlib.lines as mlines
 
 curr_keys = set()
 handle_flag = True
@@ -23,6 +24,8 @@ xy_fig = None
 xy_ax = None
 polar_canvas = None
 xy_canvas = None
+zoom_scale = 1.2
+drag_start = None
 
 command_queue = queue.Queue()
 
@@ -48,8 +51,13 @@ def main():
     control_frame = tk.Frame(window)
     control_frame.pack(side=tk.TOP, fill=tk.X)
 
+    # Create quit button and center button side-by-side, both aligned to the left
     quit_command_Button = tk.Button(control_frame, text="Press to Quit", command=send_quit)
-    quit_command_Button.pack(pady=5)
+    quit_command_Button.pack(side=tk.LEFT, padx=5, pady=5)
+
+    # Add Center CyBot Button next to the quit button
+    center_button = tk.Button(control_frame, text="Center CyBot", command=center_cybot)
+    center_button.pack(side=tk.LEFT, padx=5, pady=5)
 
     # Terminal Display
     terminal_frame = tk.Frame(window)
@@ -71,6 +79,15 @@ def main():
 
     window.after(100, update_plot_thread)
     window.mainloop()
+
+def center_cybot():
+    global position, heading, xy_ax, xy_canvas
+    # Set the XY axis limits to center the CyBot position
+    xy_ax.set_xlim(position[0] - 50, position[0] + 50)
+    xy_ax.set_ylim(position[1] - 50, position[1] + 50)
+
+    # Redraw the canvas after centering
+    xy_canvas.draw()
 
 def send_quit():
     global gui_send_message
@@ -108,16 +125,19 @@ def embed_initial_plot():
     polar_fig, polar_ax = plt.subplots(subplot_kw={'projection': 'polar'})
     xy_fig, xy_ax = plt.subplots()
 
+    # Polar setup
     polar_ax.set_title("CyBot Sensor Scan (0-180 Degrees)")
     polar_ax.set_rmax(120)
     polar_ax.grid(True)
 
+    # XY map setup
     xy_ax.set_xlim(-100, 100)
     xy_ax.set_ylim(-100, 100)
     xy_ax.set_xlabel('X-axis')
     xy_ax.set_ylabel('Y-axis')
     xy_ax.grid(True)
 
+    # Embed plots
     polar_canvas = FigureCanvasTkAgg(polar_fig, master=plot_frame)
     polar_canvas.get_tk_widget().pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
     polar_canvas.draw()
@@ -125,6 +145,74 @@ def embed_initial_plot():
     xy_canvas = FigureCanvasTkAgg(xy_fig, master=plot_frame)
     xy_canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
     xy_canvas.draw()
+
+    # Mouse bindings
+    xy_canvas.mpl_connect("scroll_event", on_scroll)
+    xy_canvas.mpl_connect("button_press_event", on_press)
+    xy_canvas.mpl_connect("button_release_event", on_release)
+    xy_canvas.mpl_connect("motion_notify_event", on_motion)
+
+def on_scroll(event):
+    ax = xy_ax
+    if event.inaxes != ax:
+        return
+
+    scale = zoom_scale if event.button == 'up' else 1 / zoom_scale
+
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    xdata = event.xdata
+    ydata = event.ydata
+
+    new_xlim = [
+        xdata - (xdata - xlim[0]) * scale,
+        xdata + (xlim[1] - xdata) * scale
+    ]
+    new_ylim = [
+        ydata - (ydata - ylim[0]) * scale,
+        ydata + (ylim[1] - ydata) * scale
+    ]
+
+    ax.set_xlim(new_xlim)
+    ax.set_ylim(new_ylim)
+    xy_canvas.draw()
+
+
+def on_press(event):
+    global drag_start
+    if event.inaxes != xy_ax:
+        return
+    drag_start = (event.x, event.y)
+
+
+def on_release(event):
+    global drag_start
+    drag_start = None
+
+
+def on_motion(event):
+    global drag_start
+    if drag_start is None or event.inaxes != xy_ax:
+        return
+
+    dx = event.x - drag_start[0]
+    dy = event.y - drag_start[1]
+    drag_start = (event.x, event.y)
+
+    ax = xy_ax
+    inv = ax.transData.inverted()
+    start_data = inv.transform((event.x - dx, event.y - dy))
+    end_data = inv.transform((event.x, event.y))
+
+    delta_x = start_data[0] - end_data[0]
+    delta_y = start_data[1] - end_data[1]
+
+    xlim = ax.get_xlim()
+    ylim = ax.get_ylim()
+    ax.set_xlim(xlim[0] + delta_x, xlim[1] + delta_x)
+    ax.set_ylim(ylim[0] + delta_y, ylim[1] + delta_y)
+    xy_canvas.draw()
+
 
 def update_plot_thread():
     global update_gui
@@ -142,9 +230,11 @@ def update_plot():
     ob_r_pattern = r"has a distance of (\d+\.\d+)"
     ob_r_width = r"and width of (\d+\.\d+)"
 
+    # Read sensor data from file
     with open(full_path + sensor_file, "r") as file:
         data = file.read()
 
+    # Parsing the data
     degrees = np.array([int(deg) for deg in re.findall(degree_pattern, data)])
     distances = np.array([float(dist) for dist in re.findall(distance_pattern, data)])
     angle_radians = np.radians(degrees)
@@ -154,6 +244,7 @@ def update_plot():
     ob_r = np.array([float(ob_dist) for ob_dist in re.findall(ob_r_pattern, data)])
     ob_width = np.array([float(ob_diam) for ob_diam in re.findall(ob_r_width, data)])
 
+    # Update the polar plot
     polar_ax.clear()
     polar_ax.plot(angle_radians, distances, color='r', linewidth=4.0)
     if len(ob_ang) > 0:
@@ -165,30 +256,47 @@ def update_plot():
     polar_ax.grid(True)
     polar_ax.set_title("Sensor Scan", size=14)
 
+    # Redraw the polar plot
     polar_canvas.draw()
 
-    xy_ax.clear()
-    margin = 20
-    min_x = min(path[0] + [position[0]]) - margin
-    max_x = max(path[0] + [position[0]]) + margin
-    min_y = min(path[1] + [position[1]]) - margin
-    max_y = max(path[1] + [position[1]]) + margin
+    # Preserve the current view limits for the XY axis
+    xlim = xy_ax.get_xlim()
+    ylim = xy_ax.get_ylim()
 
-    xy_ax.set_xlim(min_x, max_x)
-    xy_ax.set_ylim(min_y, max_y)
+    # Clear the XY axis content, but preserve limits
+    xy_ax.cla()  # This clears content but doesn't affect the figure's properties
+
+    # Restore the view limits
+    xy_ax.set_xlim(xlim)
+    xy_ax.set_ylim(ylim)
+
+    # Labeling the XY axes and enabling grid
     xy_ax.set_xlabel('X-axis')
     xy_ax.set_ylabel('Y-axis')
     xy_ax.grid(True)
 
+    # Plot the path and current position
     xy_ax.plot(path[0], path[1], color='green', linestyle='-', linewidth=2, label='Path')
     xy_ax.plot(position[0], position[1], 'ro', label='CyBot')
 
+    # Calculate arrow direction
     arrow_length = 5
     dx = arrow_length * np.cos(np.radians(heading))
     dy = arrow_length * np.sin(np.radians(heading))
-    xy_ax.arrow(position[0], position[1], dx, dy, head_width=2, head_length=3, fc='blue', ec='blue', label='Direction')
 
-    xy_ax.legend()
+    # Annotate the direction with an arrow
+    arrow_annotation = xy_ax.annotate('', 
+        xy=(position[0] + dx, position[1] + dy),  # Target position
+        xytext=(position[0], position[1]),  # Start position (CyBot)
+        arrowprops=dict(facecolor='blue', edgecolor='blue', width=1.5, headwidth=6, headlength=8),
+        label='Direction'
+    )
+
+    # Create a custom legend entry for the annotation (since annotations cannot be directly added to legend)
+    arrow_handle = mlines.Line2D([], [], color='blue', marker='>', markersize=10, label='Direction')
+
+    # Draw legend and update canvas, including the custom arrow legend handle
+    xy_ax.legend(handles=[arrow_handle], loc='upper right')
     xy_canvas.draw()
 
 def update_heading(delta_angle):
@@ -295,8 +403,8 @@ def socket_thread():
     global key_is_released
     global update_gui
 
-    HOST = "192.168.1.1"  # Use this if using the actual Cybot
-    #HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
+    #HOST = "192.168.1.1"  # Use this if using the actual Cybot
+    HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
     PORT = 288          # The port used by the server
     cybot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cybot_socket.connect((HOST, PORT))
