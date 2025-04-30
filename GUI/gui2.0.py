@@ -262,7 +262,8 @@ def socket_thread():
     global key_is_released
     global update_gui
 
-    HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
+    HOST = "192.168.1.1"  # Use this if using the actual Cybot
+    #HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
     PORT = 288          # The port used by the server
     cybot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cybot_socket.connect((HOST, PORT))
