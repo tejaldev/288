@@ -26,6 +26,7 @@ void ADC0_Init(void){
     ADC0_SSCTL3_R = 0x0006;       // 13) no TS0 D0, yes IE0 END0
     ADC0_IM_R &= ~0x0008;         // 14) disable SS3 interrupts
     ADC0_ACTSS_R |= 0x0008;       // 15) enable sample sequencer 3
+    ADC0_SAC_R |= 0x2;
 }
 
 //------------ADC0_InSeq3-----------

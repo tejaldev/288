@@ -29,6 +29,7 @@ main.obj: ../servo.h
 main.obj: ../adc.h
 main.obj: C:/ti/ccs1271/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/stdlib.h
 main.obj: ../ping.h
+main.obj: ../movement.h
 
 ../main.c:
 
@@ -87,4 +88,6 @@ C:/ti/ccs1271/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/machine/_limits.h
 C:/ti/ccs1271/ccs/tools/compiler/ti-cgt-arm_20.2.7.LTS/include/stdlib.h:
 
 ../ping.h:
+
+../movement.h:
 

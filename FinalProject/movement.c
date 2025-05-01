@@ -1,6 +1,6 @@
 #include "open_interface.h"
 
-double move_forward(oi_t *sensor_data, double distance_mm) {
+void move_forward(oi_t *sensor_data, double distance_mm) {
 
 
     double sum = 0; // distance member in oi_t struct is type double
@@ -8,10 +8,8 @@ double move_forward(oi_t *sensor_data, double distance_mm) {
     while (sum < distance_mm) {
         oi_update(sensor_data);
         sum += sensor_data -> distance; // use -> notation since pointer
-        lcd_printf("Forward: %.1f mm", sum);
         }
     oi_setWheels(0,0);
-    return sum;
 }
 
 void move_backward(oi_t *sensor_data, double distance_mm) {
@@ -22,7 +20,6 @@ void move_backward(oi_t *sensor_data, double distance_mm) {
     while (sum < distance_mm) {
         oi_update(sensor_data);
         sum -= sensor_data -> distance; // use -> notation since pointer
-        lcd_printf("Backwards: %.1f mm", sum);
         }
     oi_setWheels(0,0);
 }
@@ -51,16 +48,27 @@ void turn_left(oi_t *sensor, double degrees) {
 
 double collision_detection(oi_t *sensor, double distance_mm) {
     double sum = 0; // distance member in oi_t struct is type double
-    oi_setWheels(150, 150); //move forward
-    while (sum < distance_mm) {
-        oi_update(sensor);
-        sum += sensor -> distance; // use -> notation since pointer
-        lcd_printf("Total: %.1f mm", sum);
-        if (sensor -> bumpLeft || sensor -> bumpRight) {
-            oi_setWheels(0,0);
-            return sum;
-        }
-    }
-    oi_setWheels(0,0);
-    return sum;
+        oi_setWheels(150, 150); //move forward
+        while (sum < distance_mm) {
+            oi_update(sensor);
+            sum += sensor -> distance; // use -> notation since pointer
+            if (sensor -> bumpLeft) {
+                move_backward(sensor, 150);
+                turn_right(sensor, 90);
+                move_forward(sensor, 250);
+                turn_left(sensor, 90);
+                oi_setWheels(150, 150);
+                sum -= 150;
+            }
+            else if (sensor -> bumpRight) {
+                move_backward(sensor, 150);
+                turn_left(sensor, 90);
+                move_forward(sensor, 250);
+                turn_right(sensor, 90);
+                oi_setWheels(150, 150);
+                sum -= 150;
+            }
+            }
+        oi_setWheels(0,0);
+        return 0;
 }

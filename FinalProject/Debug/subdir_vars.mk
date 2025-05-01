@@ -12,6 +12,7 @@ C_SRCS += \
 ../Timer.c \
 ../adc.c \
 ../main.c \
+../movement.c \
 ../open_interface.c \
 ../ping.c \
 ../servo.c \
@@ -22,6 +23,7 @@ C_DEPS += \
 ./Timer.d \
 ./adc.d \
 ./main.d \
+./movement.d \
 ./open_interface.d \
 ./ping.d \
 ./servo.d \
@@ -32,6 +34,7 @@ OBJS += \
 ./Timer.obj \
 ./adc.obj \
 ./main.obj \
+./movement.obj \
 ./open_interface.obj \
 ./ping.obj \
 ./servo.obj \
@@ -42,6 +45,7 @@ OBJS__QUOTED += \
 "Timer.obj" \
 "adc.obj" \
 "main.obj" \
+"movement.obj" \
 "open_interface.obj" \
 "ping.obj" \
 "servo.obj" \
@@ -52,6 +56,7 @@ C_DEPS__QUOTED += \
 "Timer.d" \
 "adc.d" \
 "main.d" \
+"movement.d" \
 "open_interface.d" \
 "ping.d" \
 "servo.d" \
@@ -62,6 +67,7 @@ C_SRCS__QUOTED += \
 "../Timer.c" \
 "../adc.c" \
 "../main.c" \
+"../movement.c" \
 "../open_interface.c" \
 "../ping.c" \
 "../servo.c" \
