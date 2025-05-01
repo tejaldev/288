@@ -41,6 +41,10 @@ path = [[0.0], [0.0]]
 objects = [[], []]
 objects_width = []
 
+with open(full_path + sensor_file, 'w') as file:
+    pass
+
+
 scan_theta = 0.0
 update_object_flag = False
 
@@ -105,7 +109,7 @@ def key_down(event):
     global curr_keys, first_key, key_is_pressed
     if event.char not in curr_keys:
         curr_keys.add(event.char)
-        if first_key is None and event.char in ['w', 'a', 's', 'd', 'b']:
+        if first_key is None and event.char in ['w', 'a', 's', 'd', 'b', 'q']:
             first_key = event.char
             key_is_pressed = True
             command_queue.put(event.char)
@@ -287,7 +291,7 @@ def update_plot():
     if update_object_flag:
         update_objects(ob_r, ob_rad, ob_width)
 
-    size = 10 * np.power(objects_width, 2)
+    size = np.power(objects_width, 2)
     if len(ob_r) > 0:
         xy_ax.scatter(objects[0], objects[1], s= size, c='blue')
 
@@ -335,6 +339,9 @@ def update_objects(ob_r, ob_rad, ob_width):
 
     ob_x = ob_r * np.cos(ob_rad + scan_theta_rad) 
     ob_y = ob_r * np.sin(ob_rad + scan_theta_rad)
+
+    ob_x += position[0]
+    ob_y += position[1]
 
     objects[0].extend(ob_x.tolist())  
     objects[1].extend(ob_y.tolist())
