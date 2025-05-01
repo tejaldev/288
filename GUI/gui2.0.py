@@ -410,9 +410,13 @@ def update_objects(ob_r, ob_rad, ob_width):
     ob_x = ob_r * np.cos(ob_rad + scan_theta_rad)
     ob_y = ob_r * np.sin(ob_rad + scan_theta_rad)
 
-    # Shift object positions forward by 10 cm (from scanner to front of CyBot)
+    # Shift object positions forward by 10 cm (from scanner to middle of CyBot)
     ob_x += 10 * np.cos(np.radians(heading))
     ob_y += 10 * np.sin(np.radians(heading))
+
+    #Shift object positions forward by the width/2 (We are scanning the front of the object)
+    ob_x += ob_width/2.0 * np.cos(np.radians(heading))
+    ob_y += ob_width/2.0 * np.sin(np.radians(heading))
 
     # Transform to global position
     ob_x += position[0]
