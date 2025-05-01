@@ -354,7 +354,15 @@ def update_plot():
     if update_object_flag:
         update_objects(ob_r, ob_rad, ob_width)
 
-    size = np.power(objects_width, 2)
+    # Compute current view size (used to scale marker size)
+    x_range = xy_ax.get_xlim()[1] - xy_ax.get_xlim()[0]
+    y_range = xy_ax.get_ylim()[1] - xy_ax.get_ylim()[0]
+    zoom_factor = (x_range + y_range) / 2.0
+
+    # Adjust size relative to zoom factor (base size for CyBot diameter ~ 34cm)
+    base_cybot_diameter = 34.0  # cm
+    size = [(w / base_cybot_diameter) * (20000 / zoom_factor) for w in objects_width]
+
     if len(objects[0]) > 0:
         xy_ax.scatter(objects[0], objects[1], s=size, c=objects_color)
 
@@ -410,9 +418,13 @@ def update_objects(ob_r, ob_rad, ob_width):
     ob_x = ob_r * np.cos(ob_rad + scan_theta_rad)
     ob_y = ob_r * np.sin(ob_rad + scan_theta_rad)
 
-    # Shift object positions forward by 10 cm (from scanner to front of CyBot)
+    # Shift object positions forward by 10 cm (from scanner to middle of CyBot)
     ob_x += 10 * np.cos(np.radians(heading))
     ob_y += 10 * np.sin(np.radians(heading))
+
+    #Shift object positions forward by the width/2 (We are scanning the front of the object)
+    ob_x += ob_width/2.0 * np.cos(np.radians(heading))
+    ob_y += ob_width/2.0 * np.sin(np.radians(heading))
 
     # Transform to global position
     ob_x += position[0]
@@ -486,65 +498,63 @@ def read_cybot(cybot):
                     left_match = re.search(r"Turned Left: (\d+\.\d+)", decoded_line)
                     right_match = re.search(r"Turned Right: (\d+\.\d+)", decoded_line)
                     back_match = re.search(r"Drove Back (\d+)cm", decoded_line)
-                    event_match = re.match(r"(OB|Hole).*", decoded_line)  # Match "OB Detected Left", "Hole Detected Right", etc.
+                    event_match = re.match(r"(OB|Hole).*", decoded_line)  # Match OB/Hole detections
+                    bump_match = re.match(r"Hit object on (left|right)", decoded_line)  # Match bump events
+
                     if forward_match:
                         current_distance = float(forward_match.group(1))
                         delta = current_distance - previous_distance
                         previous_distance = current_distance
                         update_position(delta)
                         update_gui = True
+
                     elif left_match:
                         current_angle = float(left_match.group(1))
                         delta = current_angle - previous_angle
                         previous_angle = current_angle
                         update_heading(delta)
                         update_gui = True
+
                     elif right_match:
                         current_angle = float(right_match.group(1))
                         delta = current_angle - previous_angle
                         previous_angle = current_angle
                         update_heading(-delta)
                         update_gui = True
+
                     elif event_match:
                         event_type = event_match.group(1)  # Either "OB" or "Hole"
                         color = 'blue' if event_type == 'OB' else 'yellow'
-                        # Extract the direction from the event message
                         direction_match = re.search(r"(Front Left|Front Right|Rear Left|Rear Right|Front|Rear|Left|Right)", decoded_line)
                         if direction_match:
                             direction = direction_match.group(0)
-                            # Hazard position relative to CyBot (17 cm away in the current heading)
-                            if direction == "Front":
-                                # Object is in front of CyBot (straight ahead)
-                                hazard_dx = 17 * np.cos(np.radians(heading))
-                                hazard_dy = 17 * np.sin(np.radians(heading))
-                            elif direction == "Left":
-                                # Object is to the left of CyBot (perpendicular to heading)
-                                hazard_dx = 17 * np.cos(np.radians(heading + 90)) + 5.0  # 90 degrees left of heading
-                                hazard_dy = 17 * np.sin(np.radians(heading + 90)) + 5.0  # 90 degrees left of heading
-                            elif direction == "Right":
-                                # Object is to the right of CyBot (perpendicular to heading)
-                                hazard_dx = 17 * np.cos(np.radians(heading - 90)) - 5.0 # 90 degrees right of heading
-                                hazard_dy = 17 * np.sin(np.radians(heading - 90)) - 5.0 # 90 degrees right of heading
-                            elif direction == "Front Left":
-                                # Object is in the front-left diagonal
-                                hazard_dx = 17 * np.cos(np.radians(heading + 45))  # 45 degrees to the left of heading
-                                hazard_dy = 17 * np.sin(np.radians(heading + 45))  # 45 degrees to the left of heading
-                            elif direction == "Front Right":
-                                # Object is in the front-right diagonal
-                                hazard_dx = 17 * np.cos(np.radians(heading - 45))  # 45 degrees to the right of heading
-                                hazard_dy = 17 * np.sin(np.radians(heading - 45))  # 45 degrees to the right of heading
-                            else:
-                                print(f"Unknown direction: {direction}")
-                                hazard_dx, hazard_dy = 0, 0  # Default if no valid direction is found
-                            # Calculate the global hazard position
+                            angle_offset = {
+                                "Front": 0, "Rear": 180,
+                                "Left": 90, "Right": -90,
+                                "Front Left": 45, "Front Right": -45,
+                                "Rear Left": 135, "Rear Right": -135
+                            }.get(direction, 0)
+                            hazard_dx = 17 * np.cos(np.radians(heading + angle_offset))
+                            hazard_dy = 17 * np.sin(np.radians(heading + angle_offset))
                             hazard_x = position[0] + hazard_dx
                             hazard_y = position[1] + hazard_dy
-                            # Add hazard to the list of objects
-                            objects[0].append(hazard_x)
-                            objects[1].append(hazard_y)
                             objects_width.append(10.0)
                             objects_color.append(color)
-                            update_object_flag = True
+                            objects[0].append(hazard_x)
+                            objects[1].append(hazard_y)
+
+                    elif bump_match:
+                        side = bump_match.group(1)  # "left" or "right"
+                        bump_angle = heading + (90 if side == "left" else -90)
+                        bump_dx = 17 * np.cos(np.radians(bump_angle))
+                        bump_dy = 17 * np.sin(np.radians(bump_angle))
+                        bump_x = position[0] + bump_dx
+                        bump_y = position[1] + bump_dy
+                        objects_width.append(10.0)
+                        objects_color.append("grey")
+                        objects[0].append(bump_x)
+                        objects[1].append(bump_y)
+
                     elif back_match:
                         backward_distance = float(back_match.group(1))
                         update_position(-backward_distance)

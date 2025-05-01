@@ -8,7 +8,9 @@ const specialEvents = [
     "OB Detected Front Left",
     "OB Detected Left",
     "OB Detected Front Right",
-    "OB Detected Right"
+    "OB Detected Right",
+    "Hit object on left",
+    "Hit object on right"
 ];
 let specialEventIndex = 0;
 
