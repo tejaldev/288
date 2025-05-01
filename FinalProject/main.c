@@ -299,6 +299,8 @@ int main(void)
                         sprintf(toSendToPutty2, "Object at %d degrees has a distance of %.2fcm and width of %.2fcm", objectPosition, ping_distance, actualWidth);
                         uart_sendStr(toSendToPutty2);
                     }
+            }else{
+                uart_sendStr("Scan stopped.");
             }
             uart_sendStr("END");
             servo_move(0);
