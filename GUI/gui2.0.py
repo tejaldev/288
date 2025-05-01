@@ -29,20 +29,14 @@ drag_start = None
 
 command_queue = queue.Queue()
 
-absolute_path = os.path.dirname(__file__)
-relative_path = "./"
-full_path = os.path.join(absolute_path, relative_path)
-sensor_file = 'sensor-scan.txt'
-movement_file = 'movement.txt'
+sensor_scan_raw_data = ""
+
 
 position = [0.0, 0.0]
 heading = 0.0
 path = [[0.0], [0.0]]
 objects = [[], []]
 objects_width = []
-
-with open(full_path + sensor_file, 'w') as file:
-    pass
 
 
 scan_theta = 0.0
@@ -118,7 +112,7 @@ def key_up(event):
     global curr_keys, first_key, key_is_released, update_gui
     if event.char in curr_keys:
         curr_keys.remove(event.char)
-        if event.char == first_key:
+        if event.char == first_key and event.char != 's':
             first_key = None
             key_is_released = True
             update_gui = True
@@ -240,8 +234,7 @@ def update_plot():
     ob_r_width = r"and width of (\d+\.\d+)"
 
     # Read sensor data from file
-    with open(full_path + sensor_file, "r") as file:
-        data = file.read()
+    data = sensor_scan_raw_data
 
     # Parsing the data
     degrees = np.array([int(deg) for deg in re.findall(degree_pattern, data)])
@@ -377,53 +370,47 @@ def read_cybot(cybot):
 
             # Sensor data handling
             if decoded[0] == 's':
-                with open(full_path + sensor_file, 'w') as file_object:
-                    file_object.write(rx_message.decode()[1:])  # Skip 's'
-                    while decoded != "END":
-                        rx_message = cybot.readline()
-                        decoded = rx_message.decode().strip()
-                        update_terminal(decoded)
-                        file_object.write(rx_message.decode())
+                global sensor_scan_raw_data
+                sensor_scan_raw_data = decoded[1:] + "\n"  # Skip 's'
+                while decoded != "END":
+                    rx_message = cybot.readline()
+                    decoded = rx_message.decode().strip()
+                    update_terminal(decoded)
+                    sensor_scan_raw_data += decoded + "\n"
                 scan_theta = heading - 90
                 update_object_flag = True
                 update_gui = True
 
+
             # Movement data handling
             elif decoded[0] in ('w', 'a', 'd'):
-                with open(full_path + movement_file, 'a') as file_object:
-                    while decoded != "END":
-                        rx_message = cybot.readline()
-                        decoded_line = rx_message.decode().strip()
-                        update_terminal(decoded_line)
-                        file_object.write(rx_message.decode())
-
-                        # Movement parsing
-                        forward_match = re.search(r"Drove Forward: (\d+\.\d+)", decoded_line)
-                        left_match = re.search(r"Turned Left: (\d+\.\d+)", decoded_line)
-                        right_match = re.search(r"Turned Right: (\d+\.\d+)", decoded_line)
-
-                        if forward_match:
-                            current_distance = float(forward_match.group(1))
-                            delta = current_distance - previous_distance
-                            previous_distance = current_distance
-                            update_position(delta)
-                            update_gui = True
-
-                        elif left_match:
-                            current_angle = float(left_match.group(1))
-                            delta = current_angle - previous_angle
-                            previous_angle = current_angle
-                            update_heading(delta)
-                            update_gui = True
-
-                        elif right_match:
-                            current_angle = float(right_match.group(1))
-                            delta = current_angle - previous_angle
-                            previous_angle = current_angle
-                            update_heading(-delta)
-                            update_gui = True
-
-                        decoded = decoded_line
+                while decoded != "END":
+                    rx_message = cybot.readline()
+                    decoded_line = rx_message.decode().strip()
+                    update_terminal(decoded_line)
+                    # Movement parsing
+                    forward_match = re.search(r"Drove Forward: (\d+\.\d+)", decoded_line)
+                    left_match = re.search(r"Turned Left: (\d+\.\d+)", decoded_line)
+                    right_match = re.search(r"Turned Right: (\d+\.\d+)", decoded_line)
+                    if forward_match:
+                        current_distance = float(forward_match.group(1))
+                        delta = current_distance - previous_distance
+                        previous_distance = current_distance
+                        update_position(delta)
+                        update_gui = True
+                    elif left_match:
+                        current_angle = float(left_match.group(1))
+                        delta = current_angle - previous_angle
+                        previous_angle = current_angle
+                        update_heading(delta)
+                        update_gui = True
+                    elif right_match:
+                        current_angle = float(right_match.group(1))
+                        delta = current_angle - previous_angle
+                        previous_angle = current_angle
+                        update_heading(-delta)
+                        update_gui = True
+                    decoded = decoded_line
 
                 previous_distance = 0.0
                 previous_angle = 0.0
@@ -440,8 +427,8 @@ def socket_thread():
     global key_is_released
     global update_gui
 
-    HOST = "192.168.1.1"  # Use this if using the actual Cybot
-    #HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
+    #HOST = "192.168.1.1"  # Use this if using the actual Cybot
+    HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
     PORT = 288          # The port used by the server
     cybot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cybot_socket.connect((HOST, PORT))
