@@ -195,7 +195,7 @@ const server = net.createServer((socket) => {
 
                 socket.write(`${isFirstCycle ? `${command}` : ''}${label}: ${value.toFixed(2)} ${unit}\n`);
                 isFirstCycle = false;
-            }, 150);
+            }, 30);
         } else if (command === 's') {
             startScan();
         } else if (command === 'quit') {

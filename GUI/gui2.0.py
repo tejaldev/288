@@ -10,6 +10,8 @@ import queue
 from collections import deque
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.lines as mlines
+from matplotlib.patches import Circle
+from matplotlib.patches import Polygon
 
 curr_keys = set()
 handle_flag = True
@@ -43,7 +45,7 @@ scan_theta = 0.0
 update_object_flag = False
 
 terminal_output = None
-message_log = deque(maxlen=3)
+message_log = deque(maxlen=5)
 
 def main():
     global window, terminal_output
@@ -66,7 +68,7 @@ def main():
     terminal_frame = tk.Frame(window)
     terminal_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
-    terminal_label = tk.Label(terminal_frame, text="CyBot Terminal Output (Last 3 Messages):")
+    terminal_label = tk.Label(terminal_frame, text="CyBot Terminal Output (Last 5 Messages):")
     terminal_label.pack(anchor='w')
 
     terminal_output = tk.Text(terminal_frame, height=5, width=100, state='disabled', bg='black', fg='lime')
@@ -86,8 +88,8 @@ def main():
 def center_cybot():
     global position, heading, xy_ax, xy_canvas
     # Set the XY axis limits to center the CyBot position
-    xy_ax.set_xlim(position[0] - 50, position[0] + 50)
-    xy_ax.set_ylim(position[1] - 50, position[1] + 50)
+    xy_ax.set_xlim(position[0] - 200, position[0] + 200)
+    xy_ax.set_ylim(position[1] - 200, position[1] + 200)
 
     # Redraw the canvas after centering
     xy_canvas.draw()
@@ -284,9 +286,18 @@ def update_plot():
     xy_ax.set_ylabel('Y-axis')
     xy_ax.grid(True)
 
-    # Plot the path and current position
+    # Remove previous CyBot marker
     xy_ax.plot(path[0], path[1], color='green', linestyle='-', linewidth=2, label='Path')
-    xy_ax.plot(position[0], position[1], 'ro', label='CyBot')
+
+    # Add a circle representing the CyBot's 34 cm diameter
+    cybot_radius = 17  # Radius = diameter / 2
+    cybot_circle = Circle((position[0], position[1]), cybot_radius, color='red', alpha=0.5, label='CyBot')
+    xy_ax.add_patch(cybot_circle)
+
+    # Plot the path and current position
+    if len(path[0]) > 1:
+        xy_ax.plot(path[0][:-1], path[1][:-1], color='green', linestyle='-', linewidth=2, label='Path')
+
 
     if update_object_flag:
         update_objects(ob_r, ob_rad, ob_width)
@@ -295,21 +306,26 @@ def update_plot():
     if len(ob_r) > 0:
         xy_ax.scatter(objects[0], objects[1], s= size, c='blue')
 
-    # Calculate arrow direction
-    arrow_length = 5
-    dx = arrow_length * np.cos(np.radians(heading))
-    dy = arrow_length * np.sin(np.radians(heading))
+    # Triangle parameters
+    triangle_radius = 17  # same as the cybot_radius=17
+    theta = np.radians(heading)
 
-    # Annotate the direction with an arrow
-    arrow_annotation = xy_ax.annotate('', 
-        xy=(position[0] + dx, position[1] + dy),  # Target position
-        xytext=(position[0], position[1]),  # Start position (CyBot)
-        arrowprops=dict(facecolor='blue', edgecolor='blue', width=1.5, headwidth=6, headlength=8),
-        label='Direction'
-    )
+    # Define triangle vertices relative to the heading
+    # Pointing triangle, base 120 degrees apart
+    angle_offsets = [0, 140, -140]
+    triangle_points = []
+
+    for offset in angle_offsets:
+        ang = theta + np.radians(offset)
+        x = position[0] + triangle_radius * np.cos(ang)
+        y = position[1] + triangle_radius * np.sin(ang)
+        triangle_points.append([x, y])
+
+    triangle = Polygon(triangle_points, closed=True, color='blue', alpha=0.8, label='Direction')
+    xy_ax.add_patch(triangle)
 
     # Create a custom legend entry for the annotation (since annotations cannot be directly added to legend)
-    arrow_handle = mlines.Line2D([], [], color='blue', marker='>', markersize=10, label='Direction')
+    arrow_handle = mlines.Line2D([], [], color='blue', marker='^', linestyle='None', markersize=10, label='Direction')
 
     # Draw legend and update canvas, including the custom arrow legend handle
     xy_ax.legend(handles=[arrow_handle], loc='upper right')
@@ -337,11 +353,18 @@ def update_objects(ob_r, ob_rad, ob_width):
 
     scan_theta_rad = scan_theta * np.pi /180
 
-    ob_x = ob_r * np.cos(ob_rad + scan_theta_rad) 
+    # Apply scan angle to object local positions
+    ob_x = ob_r * np.cos(ob_rad + scan_theta_rad)
     ob_y = ob_r * np.sin(ob_rad + scan_theta_rad)
-
+    
+    # Shift object positions forward by 10 cm (from scanner to front of CyBot)
+    ob_x += 10 * np.cos(np.radians(heading))
+    ob_y += 10 * np.sin(np.radians(heading))
+    
+    # Transform to global position
     ob_x += position[0]
     ob_y += position[1]
+
 
     objects[0].extend(ob_x.tolist())  
     objects[1].extend(ob_y.tolist())
