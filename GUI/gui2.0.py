@@ -540,11 +540,10 @@ def read_cybot(cybot):
                             hazard_x = position[0] + hazard_dx
                             hazard_y = position[1] + hazard_dy
                             # Add hazard to the list of objects
-                            objects[0].append(hazard_x)
-                            objects[1].append(hazard_y)
                             objects_width.append(10.0)
                             objects_color.append(color)
-                            update_object_flag = True
+                            objects[0].append(hazard_x)
+                            objects[1].append(hazard_y)
                     elif back_match:
                         backward_distance = float(back_match.group(1))
                         update_position(-backward_distance)
