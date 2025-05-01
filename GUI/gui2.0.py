@@ -354,7 +354,15 @@ def update_plot():
     if update_object_flag:
         update_objects(ob_r, ob_rad, ob_width)
 
-    size = np.power(objects_width, 2)
+    # Compute current view size (used to scale marker size)
+    x_range = xy_ax.get_xlim()[1] - xy_ax.get_xlim()[0]
+    y_range = xy_ax.get_ylim()[1] - xy_ax.get_ylim()[0]
+    zoom_factor = (x_range + y_range) / 2.0
+
+    # Adjust size relative to zoom factor (base size for CyBot diameter ~ 34cm)
+    base_cybot_diameter = 34.0  # cm
+    size = [(w / base_cybot_diameter) * (20000 / zoom_factor) for w in objects_width]
+
     if len(objects[0]) > 0:
         xy_ax.scatter(objects[0], objects[1], s=size, c=objects_color)
 
