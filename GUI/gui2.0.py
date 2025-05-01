@@ -103,7 +103,14 @@ def key_down(event):
     global curr_keys, first_key, key_is_pressed
     if event.char not in curr_keys:
         curr_keys.add(event.char)
-        if first_key is None and event.char in ['w', 'a', 's', 'd', 'b', 'q']:
+
+        # Handle one-shot scan ('s') immediately
+        if event.char == 's':
+            command_queue.put('s')
+            return
+
+        # Only lock other commands
+        if first_key is None and event.char in ['w', 'a', 'd', 'b', 'q']:
             first_key = event.char
             key_is_pressed = True
             command_queue.put(event.char)
@@ -112,7 +119,7 @@ def key_up(event):
     global curr_keys, first_key, key_is_released, update_gui
     if event.char in curr_keys:
         curr_keys.remove(event.char)
-        if event.char == first_key and event.char != 's':
+        if event.char == first_key:
             first_key = None
             key_is_released = True
             update_gui = True
@@ -370,15 +377,21 @@ def read_cybot(cybot):
 
             # Sensor data handling
             if decoded[0] == 's':
-                global sensor_scan_raw_data
-                sensor_scan_raw_data = decoded[1:] + "\n"  # Skip 's'
+                scan_data_lines = []  # collect scan data
+                scan_theta = heading - 90
+                update_object_flag = True
+
                 while decoded != "END":
                     rx_message = cybot.readline()
                     decoded = rx_message.decode().strip()
                     update_terminal(decoded)
-                    sensor_scan_raw_data += decoded + "\n"
-                scan_theta = heading - 90
-                update_object_flag = True
+                    
+                    scan_data_lines.append(decoded)
+
+                # Join all lines and store in global variable
+                global sensor_scan_raw_data
+                sensor_scan_raw_data = "\n".join(scan_data_lines)
+
                 update_gui = True
 
 

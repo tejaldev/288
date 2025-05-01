@@ -48,7 +48,7 @@ const server = net.createServer((socket) => {
             return;
         }
         scanning = true;
-        socket.write('Scanning\n');
+        socket.write('sScanning\n');
         const scanData = [
             { degree: 0, distance: 86.82 },
             { degree: 2, distance: 84.20 },
@@ -157,7 +157,7 @@ const server = net.createServer((socket) => {
                 clearInterval(scanInterval);
                 scanning = false;
             }
-        }, 150); // Output data every 150ms for each scan
+        }, 30); // Output data every 10ms for each scan
     };
 
     socket.on('data', (data) => {
