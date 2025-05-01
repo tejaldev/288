@@ -4,6 +4,7 @@
 #include "servo.h"
 #include "adc.h"
 #include "ping.h"
+#include "movement.h"
 
 
 //USE BOT 3 FOR GOOD RESULTS
@@ -15,10 +16,10 @@ int left_bound = 180;
 //Scan Intervals
 int num_degrees = 2;
 //Movespeed
-int16_t baseSpeed = 50;
+int16_t baseSpeed = 70;
 
 //Driving Error Variables
-double kP = 0.4;
+double kP = 1;
 int prevLeft = 0;
 int prevRight = 0;
 
@@ -36,8 +37,6 @@ int main(void)
     servo_init();
     ping_init();
     ADC0_Init();
-
-
 
     // Runs until 'b' is entered
     while (1) {
@@ -193,18 +192,24 @@ int main(void)
             oi_setWheels(0, 0);
             uart_sendStr("END");
 
-        } else if (bit == 'b') {
+        }
+        else if (bit == 'b')     {
             //Play sound before breaking
             //Wee woo wee woo - Song 0
-            unsigned char notes[] = {71, 67, 71, 67, 71, 67, 71, 67, 71, 67};
-            unsigned char durations[] = {32, 32, 32, 32, 32, 32, 32, 32, 32, 32};
+
+            unsigned char notes[] = { 71, 67, 71, 67, 71, 67, 71, 67, 71, 67 };
+            unsigned char durations[] =
+                    { 32, 32, 32, 32, 32, 32, 32, 32, 32, 32 };
 
             //Baby you're a firework - Song 1
-            unsigned char notes1[] = {51, 63, 61, 60, 58, 58, 56, 60, 62, 64, 66, 68, 70, 71, 73};
-            unsigned char durations1[] = {16, 16, 16, 16, 16, 92, 16, 92, 16, 16, 16, 16, 92, 16, 92};
+            unsigned char notes1[] = { 51, 63, 61, 60, 58, 58, 56, 60, 62, 64,
+                                       66, 68, 70, 71, 73 };
+            unsigned char durations1[] = { 16, 16, 16, 16, 16, 92, 16, 92, 16,
+                                           16, 16, 16, 92, 16, 92 };
             oi_loadSong(0, 10, notes, durations);
-            oi_loadSong(1, 8, notes1, durations1);
+            oi_loadSong(1, 15, notes1, durations1);
             oi_play_song(1);
+
         }  else if (bit == 's') {
             //Scan environment
             char toSendToPutty[20];
@@ -216,15 +221,19 @@ int main(void)
                 //Scan Iteration
                 servo_move(i);
                 float adc_distance = 0;
-                int j;
+//                int j;
                 // takes 3 adc scans and averages them
                 // Optimization Idea: Try lower wait, wait only when move, > 3 scans
-                for (j = 0; j < 3; j++) {
-                    uint32_t adc_data = ADC0_InSeq3();
-                    adc_distance += pow((adc_data / 8843.5), -1.799);
-                    timer_waitMillis(50);
-                }
-                adc_distance /= 3;
+//                for (j = 0; j < 3; j++) {
+//                    uint32_t adc_data = ADC0_InSeq3();
+//                    adc_distance += pow((adc_data / 8843.5), -1.799);
+//                    timer_waitMillis(50);
+//                }
+//                adc_distance /= 3;
+                uint32_t adc_data = ADC0_InSeq3();
+                //adc_distance += pow((adc_data / 8843.5), -1.799);
+                adc_distance = pow(adc_data, -1.3291) * 302886.5254;
+                timer_waitMillis(30);
                 // Stores the adc scans for latter use
                 adcValues[i / num_degrees] = adc_distance;
                 char toSendToPutty1[50];
@@ -292,6 +301,10 @@ int main(void)
                     }
             }
             uart_sendStr("END");
+            servo_move(0);
+        }
+        else if (bit == 'l') {
+            break;
         }
     }
 
