@@ -311,7 +311,7 @@ def update_plot():
     polar_ax.clear()
     polar_ax.plot(angle_radians, distances, color='r', linewidth=4.0)
     if len(ob_ang) > 0:
-        polar_ax.scatter(ob_rad, ob_r, s=ob_width**2, c='blue')
+        polar_ax.scatter(ob_rad, ob_r, s=ob_width**2, c='green')
     polar_ax.set_rmax(120)
     polar_ax.set_rticks([10, 25, 50, 75, 100])
     polar_ax.set_rlabel_position(-22.5)
@@ -422,7 +422,7 @@ def update_objects(ob_r, ob_rad, ob_width):
     objects[0].extend(ob_x.tolist())  
     objects[1].extend(ob_y.tolist())
     objects_width.extend([float(np.squeeze(w)) for w in ob_width])  
-    objects_color.extend(['blue'] * len(ob_width))
+    objects_color.extend(['green'] * len(ob_width))
 
 def update_terminal(new_message):
     global terminal_output, message_log
@@ -509,7 +509,7 @@ def read_cybot(cybot):
                         event_type = event_match.group(1)  # Either "OB" or "Hole"
                         color = 'blue' if event_type == 'OB' else 'yellow'
                         # Extract the direction from the event message
-                        direction_match = re.search(r"(Front|Rear|Left|Right|Front Left|Front Right|Rear Left|Rear Right)", decoded_line)
+                        direction_match = re.search(r"(Front Left|Front Right|Rear Left|Rear Right|Front|Rear|Left|Right)", decoded_line)
                         if direction_match:
                             direction = direction_match.group(0)
                             # Hazard position relative to CyBot (17 cm away in the current heading)
@@ -517,27 +517,22 @@ def read_cybot(cybot):
                                 # Object is in front of CyBot (straight ahead)
                                 hazard_dx = 17 * np.cos(np.radians(heading))
                                 hazard_dy = 17 * np.sin(np.radians(heading))
-                                print("Front")
                             elif direction == "Left":
                                 # Object is to the left of CyBot (perpendicular to heading)
-                                hazard_dx = 17 * np.cos(np.radians(heading + 90))  # 90 degrees left of heading
-                                hazard_dy = 17 * np.sin(np.radians(heading + 90))  # 90 degrees left of heading
-                                print("Left")
+                                hazard_dx = 17 * np.cos(np.radians(heading + 90)) + 5.0  # 90 degrees left of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading + 90)) + 5.0  # 90 degrees left of heading
                             elif direction == "Right":
                                 # Object is to the right of CyBot (perpendicular to heading)
-                                hazard_dx = 17 * np.cos(np.radians(heading - 90))  # 90 degrees right of heading
-                                hazard_dy = 17 * np.sin(np.radians(heading - 90))  # 90 degrees right of heading
-                                print("Right")
+                                hazard_dx = 17 * np.cos(np.radians(heading - 90)) - 5.0 # 90 degrees right of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading - 90)) - 5.0 # 90 degrees right of heading
                             elif direction == "Front Left":
                                 # Object is in the front-left diagonal
                                 hazard_dx = 17 * np.cos(np.radians(heading + 45))  # 45 degrees to the left of heading
                                 hazard_dy = 17 * np.sin(np.radians(heading + 45))  # 45 degrees to the left of heading
-                                print("Front Left")
                             elif direction == "Front Right":
                                 # Object is in the front-right diagonal
                                 hazard_dx = 17 * np.cos(np.radians(heading - 45))  # 45 degrees to the right of heading
                                 hazard_dy = 17 * np.sin(np.radians(heading - 45))  # 45 degrees to the right of heading
-                                print("Front Right")
                             else:
                                 print(f"Unknown direction: {direction}")
                                 hazard_dx, hazard_dy = 0, 0  # Default if no valid direction is found
