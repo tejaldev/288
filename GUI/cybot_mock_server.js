@@ -1,14 +1,26 @@
 const net = require('net');
 
+const specialEvents = [
+    "Hole Detected Front Left",
+    "Hole Detected Left",
+    "Hole Detected Front Right",
+    "Hole Detected Right",
+    "OB Detected Front Left",
+    "OB Detected Left",
+    "OB Detected Front Right",
+    "OB Detected Right"
+];
+let specialEventIndex = 0;
+
 const server = net.createServer((socket) => {
     console.log('Client connected');
 
     let interval = null;
     let currentCommand = null;
     let value = 0;
-    let isFirstCycle = true; // <-- NEW FLAG
-    let scanInterval = null;  // <-- Track scan interval
-    let scanning = false; // <-- Flag to indicate if a scan is in progress
+    let isFirstCycle = true;
+    let scanInterval = null;
+    let scanning = false;
 
     const stopSimulation = () => {
         if (interval) {
@@ -34,7 +46,6 @@ const server = net.createServer((socket) => {
             value = 0;
         }
 
-        // Stop scanning if it's in progress
         if (scanning) {
             clearInterval(scanInterval);
             scanning = false;
@@ -157,7 +168,7 @@ const server = net.createServer((socket) => {
                 clearInterval(scanInterval);
                 scanning = false;
             }
-        }, 30); // Output data every 10ms for each scan
+        }, 30);
     };
 
     socket.on('data', (data) => {
@@ -192,9 +203,22 @@ const server = net.createServer((socket) => {
                     label = 'Turned Right';
                     unit = 'degrees';
                 }
-
+            
                 socket.write(`${isFirstCycle ? `${command}` : ''}${label}: ${value.toFixed(2)} ${unit}\n`);
                 isFirstCycle = false;
+            
+                // Special event every 100 cm for forward movement
+                if (command === 'w' && value % 100 === 0) {
+                    const event = specialEvents[specialEventIndex];
+                    socket.write(`${event}\n`);
+                    socket.write('Drove Back 10cm\n');
+                    value -= 10;
+                    specialEventIndex = (specialEventIndex + 1) % specialEvents.length;
+            
+                    // Stop movement after event
+                    stopSimulation();
+                }
+            
             }, 30);
         } else if (command === 's') {
             startScan();

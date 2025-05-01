@@ -33,13 +33,12 @@ command_queue = queue.Queue()
 
 sensor_scan_raw_data = ""
 
-
 position = [0.0, 0.0]
 heading = 0.0
 path = [[0.0], [0.0]]
 objects = [[], []]
 objects_width = []
-
+objects_color = []
 
 scan_theta = 0.0
 update_object_flag = False
@@ -112,7 +111,7 @@ def handle_mouse_clicks(event):
 
 
 def on_click(event):
-    global objects, objects_width, xy_canvas, xy_ax, update_gui
+    global objects, objects_width, xy_canvas, xy_ax, update_gui, objects_color
 
     if event.inaxes != xy_ax:
         return
@@ -136,15 +135,17 @@ def on_click(event):
             del objects[0][i]
             del objects[1][i]
             del objects_width[i]
+            del objects_color[i]
             update_gui = True
             return  # Delete only one at a time
         
 def clear_all():
-    global objects, objects_width, path, update_gui
+    global objects, objects_width, path, update_gui, objects_color
 
     # Clear object and path data
     objects = [[], []]
     objects_width = []
+    objects_color = []
     path = [[position[0]], [position[1]]]  # Start path at current position
 
     update_gui = True
@@ -354,8 +355,9 @@ def update_plot():
         update_objects(ob_r, ob_rad, ob_width)
 
     size = np.power(objects_width, 2)
-    if len(ob_r) > 0:
-        xy_ax.scatter(objects[0], objects[1], s= size, c='blue')
+    if len(objects[0]) > 0:
+        xy_ax.scatter(objects[0], objects[1], s=size, c=objects_color)
+
 
     # Triangle parameters
     triangle_radius = 17  # same as the cybot_radius=17
@@ -420,6 +422,7 @@ def update_objects(ob_r, ob_rad, ob_width):
     objects[0].extend(ob_x.tolist())  
     objects[1].extend(ob_y.tolist())
     objects_width.extend([float(np.squeeze(w)) for w in ob_width])  
+    objects_color.extend(['blue'] * len(ob_width))
 
 def update_terminal(new_message):
     global terminal_output, message_log
@@ -474,6 +477,7 @@ def read_cybot(cybot):
             # Movement data handling
             elif decoded[0] in ('w', 'a', 'd'):
                 while decoded != "END":
+                    # Match movement updates
                     rx_message = cybot.readline()
                     decoded_line = rx_message.decode().strip()
                     update_terminal(decoded_line)
@@ -481,6 +485,8 @@ def read_cybot(cybot):
                     forward_match = re.search(r"Drove Forward: (\d+\.\d+)", decoded_line)
                     left_match = re.search(r"Turned Left: (\d+\.\d+)", decoded_line)
                     right_match = re.search(r"Turned Right: (\d+\.\d+)", decoded_line)
+                    back_match = re.search(r"Drove Back (\d+)cm", decoded_line)
+                    event_match = re.match(r"(OB|Hole).*", decoded_line)  # Match "OB Detected Left", "Hole Detected Right", etc.
                     if forward_match:
                         current_distance = float(forward_match.group(1))
                         delta = current_distance - previous_distance
@@ -499,6 +505,56 @@ def read_cybot(cybot):
                         previous_angle = current_angle
                         update_heading(-delta)
                         update_gui = True
+                    elif event_match:
+                        event_type = event_match.group(1)  # Either "OB" or "Hole"
+                        color = 'blue' if event_type == 'OB' else 'yellow'
+                        # Extract the direction from the event message
+                        direction_match = re.search(r"(Front|Rear|Left|Right|Front Left|Front Right|Rear Left|Rear Right)", decoded_line)
+                        if direction_match:
+                            direction = direction_match.group(0)
+                            # Hazard position relative to CyBot (17 cm away in the current heading)
+                            if direction == "Front":
+                                # Object is in front of CyBot (straight ahead)
+                                hazard_dx = 17 * np.cos(np.radians(heading))
+                                hazard_dy = 17 * np.sin(np.radians(heading))
+                                print("Front")
+                            elif direction == "Left":
+                                # Object is to the left of CyBot (perpendicular to heading)
+                                hazard_dx = 17 * np.cos(np.radians(heading + 90))  # 90 degrees left of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading + 90))  # 90 degrees left of heading
+                                print("Left")
+                            elif direction == "Right":
+                                # Object is to the right of CyBot (perpendicular to heading)
+                                hazard_dx = 17 * np.cos(np.radians(heading - 90))  # 90 degrees right of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading - 90))  # 90 degrees right of heading
+                                print("Right")
+                            elif direction == "Front Left":
+                                # Object is in the front-left diagonal
+                                hazard_dx = 17 * np.cos(np.radians(heading + 45))  # 45 degrees to the left of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading + 45))  # 45 degrees to the left of heading
+                                print("Front Left")
+                            elif direction == "Front Right":
+                                # Object is in the front-right diagonal
+                                hazard_dx = 17 * np.cos(np.radians(heading - 45))  # 45 degrees to the right of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading - 45))  # 45 degrees to the right of heading
+                                print("Front Right")
+                            else:
+                                print(f"Unknown direction: {direction}")
+                                hazard_dx, hazard_dy = 0, 0  # Default if no valid direction is found
+                            # Calculate the global hazard position
+                            hazard_x = position[0] + hazard_dx
+                            hazard_y = position[1] + hazard_dy
+                            # Add hazard to the list of objects
+                            objects[0].append(hazard_x)
+                            objects[1].append(hazard_y)
+                            objects_width.append(10.0)
+                            objects_color.append(color)
+                            update_object_flag = True
+                    elif back_match:
+                        backward_distance = float(back_match.group(1))
+                        update_position(-backward_distance)
+                        update_gui = True
+                    
                     decoded = decoded_line
 
                 previous_distance = 0.0
