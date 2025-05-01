@@ -46,6 +46,7 @@ update_object_flag = False
 
 terminal_output = None
 message_log = deque(maxlen=5)
+scan_complete = True
 
 def main():
     global window, terminal_output
@@ -150,16 +151,17 @@ def clear_all():
 
 
 def key_down(event):
-    global curr_keys, first_key, key_is_pressed
-    if event.char not in curr_keys:
-        curr_keys.add(event.char)
-
-        # Handle one-shot scan ('s') immediately
-        if event.char == 's':
+    global curr_keys, first_key, key_is_pressed, scan_complete
+    # Handle one-shot scan ('s') immediately
+    if event.char == 's':
+        if scan_complete:
+            scan_complete = False
             command_queue.put('s')
             return
+    elif event.char not in curr_keys:
+        curr_keys.add(event.char)
 
-        # Only lock other commands
+        #Lock other commands
         if first_key is None and event.char in ['w', 'a', 'd', 'b', 'q']:
             first_key = event.char
             key_is_pressed = True
@@ -433,6 +435,7 @@ def read_cybot(cybot):
     global previous_distance  # Tracks last known total distance
     global previous_angle
     global scan_theta, update_object_flag
+    global scan_complete
 
     previous_distance = 0.0
     previous_angle = 0.0
@@ -453,7 +456,7 @@ def read_cybot(cybot):
                 scan_theta = heading - 90
                 update_object_flag = True
 
-                while decoded != "END":
+                while decoded != "END" and decoded != "Scan stopped.":
                     rx_message = cybot.readline()
                     decoded = rx_message.decode().strip()
                     update_terminal(decoded)
@@ -465,6 +468,7 @@ def read_cybot(cybot):
                 sensor_scan_raw_data = "\n".join(scan_data_lines)
 
                 update_gui = True
+                scan_complete = True  # Mark scan as finished
 
 
             # Movement data handling
@@ -532,7 +536,7 @@ def socket_thread():
         try:
             command = command_queue.get(timeout=0.1)
 
-            if command != last_command or command == 'q':
+            if command != last_command or command == 'q' or command == 's':
                 cybot.write(command.encode())
                 last_command = command
                 if command == 'quit\n':
