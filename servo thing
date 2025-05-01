@@ -1,0 +1,11 @@
+servo_move(uint16_t degrees){
+    uint32_t pulse_width = (((16000 / 90) * degrees)/2) + 16000;
+    int32_t offset = (int32_t)(calculateOffset() * degrees) + OFFSET0; //Offset for calibration
+    pulse_width += offset;
+    uint32_t clock = (320000 - pulse_width);
+    uint32_t clock_match = clock & 0x0FFFF;
+    uint32_t clock_pmr = (clock & 0xFF0000) >> 16;
+
+    TIMER1_TBMATCHR_R = clock_match; //Match value
+    TIMER1_TBPMR_R = clock_pmr; //Prescale Match
+}
