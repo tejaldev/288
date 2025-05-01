@@ -10,6 +10,8 @@ import queue
 from collections import deque
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 import matplotlib.lines as mlines
+from matplotlib.patches import Circle
+from matplotlib.patches import Polygon
 
 curr_keys = set()
 handle_flag = True
@@ -29,27 +31,21 @@ drag_start = None
 
 command_queue = queue.Queue()
 
-absolute_path = os.path.dirname(__file__)
-relative_path = "./"
-full_path = os.path.join(absolute_path, relative_path)
-sensor_file = 'sensor-scan.txt'
-movement_file = 'movement.txt'
+sensor_scan_raw_data = ""
 
 position = [0.0, 0.0]
 heading = 0.0
 path = [[0.0], [0.0]]
 objects = [[], []]
 objects_width = []
-
-with open(full_path + sensor_file, 'w') as file:
-    pass
-
+objects_color = []
 
 scan_theta = 0.0
 update_object_flag = False
 
 terminal_output = None
-message_log = deque(maxlen=3)
+message_log = deque(maxlen=5)
+scan_complete = True
 
 def main():
     global window, terminal_output
@@ -68,11 +64,15 @@ def main():
     center_button = tk.Button(control_frame, text="Center CyBot", command=center_cybot)
     center_button.pack(side=tk.LEFT, padx=5, pady=5)
 
+    # Add Clear All button
+    clear_button = tk.Button(control_frame, text="Clear All", command=clear_all)
+    clear_button.pack(side=tk.LEFT, padx=5, pady=5)
+
     # Terminal Display
     terminal_frame = tk.Frame(window)
     terminal_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
 
-    terminal_label = tk.Label(terminal_frame, text="CyBot Terminal Output (Last 3 Messages):")
+    terminal_label = tk.Label(terminal_frame, text="CyBot Terminal Output (Last 5 Messages):")
     terminal_label.pack(anchor='w')
 
     terminal_output = tk.Text(terminal_frame, height=5, width=100, state='disabled', bg='black', fg='lime')
@@ -92,8 +92,8 @@ def main():
 def center_cybot():
     global position, heading, xy_ax, xy_canvas
     # Set the XY axis limits to center the CyBot position
-    xy_ax.set_xlim(position[0] - 50, position[0] + 50)
-    xy_ax.set_ylim(position[1] - 50, position[1] + 50)
+    xy_ax.set_xlim(position[0] - 200, position[0] + 200)
+    xy_ax.set_ylim(position[1] - 200, position[1] + 200)
 
     # Redraw the canvas after centering
     xy_canvas.draw()
@@ -105,11 +105,65 @@ def send_quit():
     time.sleep(1)
     window.destroy()
 
+def handle_mouse_clicks(event):
+    on_press(event)   # For dragging
+    on_click(event)   # For deleting objects
+
+
+def on_click(event):
+    global objects, objects_width, xy_canvas, xy_ax, update_gui, objects_color
+
+    if event.inaxes != xy_ax:
+        return
+
+    # Convert click to data coordinates
+    click_x = event.xdata
+    click_y = event.ydata
+
+    if click_x is None or click_y is None:
+        return
+
+    tolerance = 5  # Distance tolerance in cm for click radius
+
+    # Iterate over object positions to find if click is close
+    for i in range(len(objects[0])):
+        obj_x = objects[0][i]
+        obj_y = objects[1][i]
+        dist = np.hypot(obj_x - click_x, obj_y - click_y)
+        if dist <= tolerance:
+            # Delete this object
+            del objects[0][i]
+            del objects[1][i]
+            del objects_width[i]
+            del objects_color[i]
+            update_gui = True
+            return  # Delete only one at a time
+        
+def clear_all():
+    global objects, objects_width, path, update_gui, objects_color
+
+    # Clear object and path data
+    objects = [[], []]
+    objects_width = []
+    objects_color = []
+    path = [[position[0]], [position[1]]]  # Start path at current position
+
+    update_gui = True
+
+
 def key_down(event):
-    global curr_keys, first_key, key_is_pressed
-    if event.char not in curr_keys:
+    global curr_keys, first_key, key_is_pressed, scan_complete
+    # Handle one-shot scan ('s') immediately
+    if event.char == 's':
+        if scan_complete:
+            scan_complete = False
+            command_queue.put('s')
+            return
+    elif event.char not in curr_keys:
         curr_keys.add(event.char)
-        if first_key is None and event.char in ['w', 'a', 's', 'd', 'b', 'q']:
+
+        #Lock other commands
+        if first_key is None and event.char in ['w', 'a', 'd', 'b', 'q']:
             first_key = event.char
             key_is_pressed = True
             command_queue.put(event.char)
@@ -153,11 +207,12 @@ def embed_initial_plot():
 
     xy_canvas = FigureCanvasTkAgg(xy_fig, master=plot_frame)
     xy_canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+    xy_canvas.mpl_connect("button_press_event", on_click)
     xy_canvas.draw()
 
     # Mouse bindings
     xy_canvas.mpl_connect("scroll_event", on_scroll)
-    xy_canvas.mpl_connect("button_press_event", on_press)
+    xy_canvas.mpl_connect("button_press_event", handle_mouse_clicks)
     xy_canvas.mpl_connect("button_release_event", on_release)
     xy_canvas.mpl_connect("motion_notify_event", on_motion)
 
@@ -240,8 +295,7 @@ def update_plot():
     ob_r_width = r"and width of (\d+\.\d+)"
 
     # Read sensor data from file
-    with open(full_path + sensor_file, "r") as file:
-        data = file.read()
+    data = sensor_scan_raw_data
 
     # Parsing the data
     degrees = np.array([int(deg) for deg in re.findall(degree_pattern, data)])
@@ -257,7 +311,7 @@ def update_plot():
     polar_ax.clear()
     polar_ax.plot(angle_radians, distances, color='r', linewidth=4.0)
     if len(ob_ang) > 0:
-        polar_ax.scatter(ob_rad, ob_r, s=ob_width**2, c='blue')
+        polar_ax.scatter(ob_rad, ob_r, s=ob_width**2, c='green')
     polar_ax.set_rmax(120)
     polar_ax.set_rticks([10, 25, 50, 75, 100])
     polar_ax.set_rlabel_position(-22.5)
@@ -284,32 +338,47 @@ def update_plot():
     xy_ax.set_ylabel('Y-axis')
     xy_ax.grid(True)
 
-    # Plot the path and current position
+    # Remove previous CyBot marker
     xy_ax.plot(path[0], path[1], color='green', linestyle='-', linewidth=2, label='Path')
-    xy_ax.plot(position[0], position[1], 'ro', label='CyBot')
+
+    # Add a circle representing the CyBot's 34 cm diameter
+    cybot_radius = 17  # Radius = diameter / 2
+    cybot_circle = Circle((position[0], position[1]), cybot_radius, color='red', alpha=0.5, label='CyBot')
+    xy_ax.add_patch(cybot_circle)
+
+    # Plot the path and current position
+    if len(path[0]) > 1:
+        xy_ax.plot(path[0][:-1], path[1][:-1], color='green', linestyle='-', linewidth=2, label='Path')
+
 
     if update_object_flag:
         update_objects(ob_r, ob_rad, ob_width)
 
     size = np.power(objects_width, 2)
-    if len(ob_r) > 0:
-        xy_ax.scatter(objects[0], objects[1], s= size, c='blue')
+    if len(objects[0]) > 0:
+        xy_ax.scatter(objects[0], objects[1], s=size, c=objects_color)
 
-    # Calculate arrow direction
-    arrow_length = 5
-    dx = arrow_length * np.cos(np.radians(heading))
-    dy = arrow_length * np.sin(np.radians(heading))
 
-    # Annotate the direction with an arrow
-    arrow_annotation = xy_ax.annotate('', 
-        xy=(position[0] + dx, position[1] + dy),  # Target position
-        xytext=(position[0], position[1]),  # Start position (CyBot)
-        arrowprops=dict(facecolor='blue', edgecolor='blue', width=1.5, headwidth=6, headlength=8),
-        label='Direction'
-    )
+    # Triangle parameters
+    triangle_radius = 17  # same as the cybot_radius=17
+    theta = np.radians(heading)
+
+    # Define triangle vertices relative to the heading
+    # Pointing triangle, base 120 degrees apart
+    angle_offsets = [0, 140, -140]
+    triangle_points = []
+
+    for offset in angle_offsets:
+        ang = theta + np.radians(offset)
+        x = position[0] + triangle_radius * np.cos(ang)
+        y = position[1] + triangle_radius * np.sin(ang)
+        triangle_points.append([x, y])
+
+    triangle = Polygon(triangle_points, closed=True, color='blue', alpha=0.8, label='Direction')
+    xy_ax.add_patch(triangle)
 
     # Create a custom legend entry for the annotation (since annotations cannot be directly added to legend)
-    arrow_handle = mlines.Line2D([], [], color='blue', marker='>', markersize=10, label='Direction')
+    arrow_handle = mlines.Line2D([], [], color='blue', marker='^', linestyle='None', markersize=10, label='Direction')
 
     # Draw legend and update canvas, including the custom arrow legend handle
     xy_ax.legend(handles=[arrow_handle], loc='upper right')
@@ -337,15 +406,23 @@ def update_objects(ob_r, ob_rad, ob_width):
 
     scan_theta_rad = scan_theta * np.pi /180
 
-    ob_x = ob_r * np.cos(ob_rad + scan_theta_rad) 
+    # Apply scan angle to object local positions
+    ob_x = ob_r * np.cos(ob_rad + scan_theta_rad)
     ob_y = ob_r * np.sin(ob_rad + scan_theta_rad)
 
+    # Shift object positions forward by 10 cm (from scanner to front of CyBot)
+    ob_x += 10 * np.cos(np.radians(heading))
+    ob_y += 10 * np.sin(np.radians(heading))
+
+    # Transform to global position
     ob_x += position[0]
     ob_y += position[1]
+
 
     objects[0].extend(ob_x.tolist())  
     objects[1].extend(ob_y.tolist())
     objects_width.extend([float(np.squeeze(w)) for w in ob_width])  
+    objects_color.extend(['green'] * len(ob_width))
 
 def update_terminal(new_message):
     global terminal_output, message_log
@@ -361,6 +438,7 @@ def read_cybot(cybot):
     global previous_distance  # Tracks last known total distance
     global previous_angle
     global scan_theta, update_object_flag
+    global scan_complete
 
     previous_distance = 0.0
     previous_angle = 0.0
@@ -377,53 +455,102 @@ def read_cybot(cybot):
 
             # Sensor data handling
             if decoded[0] == 's':
-                with open(full_path + sensor_file, 'w') as file_object:
-                    file_object.write(rx_message.decode()[1:])  # Skip 's'
-                    while decoded != "END":
-                        rx_message = cybot.readline()
-                        decoded = rx_message.decode().strip()
-                        update_terminal(decoded)
-                        file_object.write(rx_message.decode())
+                scan_data_lines = []  # collect scan data
                 scan_theta = heading - 90
                 update_object_flag = True
+
+                while decoded != "END" and decoded != "Scan stopped.":
+                    rx_message = cybot.readline()
+                    decoded = rx_message.decode().strip()
+                    update_terminal(decoded)
+                    
+                    scan_data_lines.append(decoded)
+
+                # Join all lines and store in global variable
+                global sensor_scan_raw_data
+                sensor_scan_raw_data = "\n".join(scan_data_lines)
+
                 update_gui = True
+                scan_complete = True  # Mark scan as finished
+
 
             # Movement data handling
             elif decoded[0] in ('w', 'a', 'd'):
-                with open(full_path + movement_file, 'a') as file_object:
-                    while decoded != "END":
-                        rx_message = cybot.readline()
-                        decoded_line = rx_message.decode().strip()
-                        update_terminal(decoded_line)
-                        file_object.write(rx_message.decode())
-
-                        # Movement parsing
-                        forward_match = re.search(r"Drove Forward: (\d+\.\d+)", decoded_line)
-                        left_match = re.search(r"Turned Left: (\d+\.\d+)", decoded_line)
-                        right_match = re.search(r"Turned Right: (\d+\.\d+)", decoded_line)
-
-                        if forward_match:
-                            current_distance = float(forward_match.group(1))
-                            delta = current_distance - previous_distance
-                            previous_distance = current_distance
-                            update_position(delta)
-                            update_gui = True
-
-                        elif left_match:
-                            current_angle = float(left_match.group(1))
-                            delta = current_angle - previous_angle
-                            previous_angle = current_angle
-                            update_heading(delta)
-                            update_gui = True
-
-                        elif right_match:
-                            current_angle = float(right_match.group(1))
-                            delta = current_angle - previous_angle
-                            previous_angle = current_angle
-                            update_heading(-delta)
-                            update_gui = True
-
-                        decoded = decoded_line
+                while decoded != "END":
+                    # Match movement updates
+                    rx_message = cybot.readline()
+                    decoded_line = rx_message.decode().strip()
+                    update_terminal(decoded_line)
+                    # Movement parsing
+                    forward_match = re.search(r"Drove Forward: (\d+\.\d+)", decoded_line)
+                    left_match = re.search(r"Turned Left: (\d+\.\d+)", decoded_line)
+                    right_match = re.search(r"Turned Right: (\d+\.\d+)", decoded_line)
+                    back_match = re.search(r"Drove Back (\d+)cm", decoded_line)
+                    event_match = re.match(r"(OB|Hole).*", decoded_line)  # Match "OB Detected Left", "Hole Detected Right", etc.
+                    if forward_match:
+                        current_distance = float(forward_match.group(1))
+                        delta = current_distance - previous_distance
+                        previous_distance = current_distance
+                        update_position(delta)
+                        update_gui = True
+                    elif left_match:
+                        current_angle = float(left_match.group(1))
+                        delta = current_angle - previous_angle
+                        previous_angle = current_angle
+                        update_heading(delta)
+                        update_gui = True
+                    elif right_match:
+                        current_angle = float(right_match.group(1))
+                        delta = current_angle - previous_angle
+                        previous_angle = current_angle
+                        update_heading(-delta)
+                        update_gui = True
+                    elif event_match:
+                        event_type = event_match.group(1)  # Either "OB" or "Hole"
+                        color = 'blue' if event_type == 'OB' else 'yellow'
+                        # Extract the direction from the event message
+                        direction_match = re.search(r"(Front Left|Front Right|Rear Left|Rear Right|Front|Rear|Left|Right)", decoded_line)
+                        if direction_match:
+                            direction = direction_match.group(0)
+                            # Hazard position relative to CyBot (17 cm away in the current heading)
+                            if direction == "Front":
+                                # Object is in front of CyBot (straight ahead)
+                                hazard_dx = 17 * np.cos(np.radians(heading))
+                                hazard_dy = 17 * np.sin(np.radians(heading))
+                            elif direction == "Left":
+                                # Object is to the left of CyBot (perpendicular to heading)
+                                hazard_dx = 17 * np.cos(np.radians(heading + 90)) + 5.0  # 90 degrees left of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading + 90)) + 5.0  # 90 degrees left of heading
+                            elif direction == "Right":
+                                # Object is to the right of CyBot (perpendicular to heading)
+                                hazard_dx = 17 * np.cos(np.radians(heading - 90)) - 5.0 # 90 degrees right of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading - 90)) - 5.0 # 90 degrees right of heading
+                            elif direction == "Front Left":
+                                # Object is in the front-left diagonal
+                                hazard_dx = 17 * np.cos(np.radians(heading + 45))  # 45 degrees to the left of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading + 45))  # 45 degrees to the left of heading
+                            elif direction == "Front Right":
+                                # Object is in the front-right diagonal
+                                hazard_dx = 17 * np.cos(np.radians(heading - 45))  # 45 degrees to the right of heading
+                                hazard_dy = 17 * np.sin(np.radians(heading - 45))  # 45 degrees to the right of heading
+                            else:
+                                print(f"Unknown direction: {direction}")
+                                hazard_dx, hazard_dy = 0, 0  # Default if no valid direction is found
+                            # Calculate the global hazard position
+                            hazard_x = position[0] + hazard_dx
+                            hazard_y = position[1] + hazard_dy
+                            # Add hazard to the list of objects
+                            objects[0].append(hazard_x)
+                            objects[1].append(hazard_y)
+                            objects_width.append(10.0)
+                            objects_color.append(color)
+                            update_object_flag = True
+                    elif back_match:
+                        backward_distance = float(back_match.group(1))
+                        update_position(-backward_distance)
+                        update_gui = True
+                    
+                    decoded = decoded_line
 
                 previous_distance = 0.0
                 previous_angle = 0.0
@@ -440,8 +567,8 @@ def socket_thread():
     global key_is_released
     global update_gui
 
-    HOST = "192.168.1.1"  # Use this if using the actual Cybot
-    #HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
+    #HOST = "192.168.1.1"  # Use this if using the actual Cybot
+    HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
     PORT = 288          # The port used by the server
     cybot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cybot_socket.connect((HOST, PORT))
@@ -460,7 +587,7 @@ def socket_thread():
         try:
             command = command_queue.get(timeout=0.1)
 
-            if command != last_command or command == 'q':
+            if command != last_command or command == 'q' or command == 's':
                 cybot.write(command.encode())
                 last_command = command
                 if command == 'quit\n':
