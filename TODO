@@ -1,0 +1,6 @@
+Fix first turn after scan not updating position
+Make cybot circle bigger
+Implement short object and boundary
+Make scan button on one press (not hold)
+Calibrate for Better accuracy from wheels (turning and distance)
+Implement bump backup tracking (-10cm after backup)
