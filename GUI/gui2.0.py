@@ -64,6 +64,10 @@ def main():
     center_button = tk.Button(control_frame, text="Center CyBot", command=center_cybot)
     center_button.pack(side=tk.LEFT, padx=5, pady=5)
 
+    # Add Clear All button
+    clear_button = tk.Button(control_frame, text="Clear All", command=clear_all)
+    clear_button.pack(side=tk.LEFT, padx=5, pady=5)
+
     # Terminal Display
     terminal_frame = tk.Frame(window)
     terminal_frame.pack(side=tk.TOP, fill=tk.X, padx=10, pady=10)
@@ -100,6 +104,50 @@ def send_quit():
     gui_send_message = "quit\n"
     time.sleep(1)
     window.destroy()
+
+def handle_mouse_clicks(event):
+    on_press(event)   # For dragging
+    on_click(event)   # For deleting objects
+
+
+def on_click(event):
+    global objects, objects_width, xy_canvas, xy_ax, update_gui
+
+    if event.inaxes != xy_ax:
+        return
+
+    # Convert click to data coordinates
+    click_x = event.xdata
+    click_y = event.ydata
+
+    if click_x is None or click_y is None:
+        return
+
+    tolerance = 5  # Distance tolerance in cm for click radius
+
+    # Iterate over object positions to find if click is close
+    for i in range(len(objects[0])):
+        obj_x = objects[0][i]
+        obj_y = objects[1][i]
+        dist = np.hypot(obj_x - click_x, obj_y - click_y)
+        if dist <= tolerance:
+            # Delete this object
+            del objects[0][i]
+            del objects[1][i]
+            del objects_width[i]
+            update_gui = True
+            return  # Delete only one at a time
+        
+def clear_all():
+    global objects, objects_width, path, update_gui
+
+    # Clear object and path data
+    objects = [[], []]
+    objects_width = []
+    path = [[position[0]], [position[1]]]  # Start path at current position
+
+    update_gui = True
+
 
 def key_down(event):
     global curr_keys, first_key, key_is_pressed
@@ -156,11 +204,12 @@ def embed_initial_plot():
 
     xy_canvas = FigureCanvasTkAgg(xy_fig, master=plot_frame)
     xy_canvas.get_tk_widget().pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+    xy_canvas.mpl_connect("button_press_event", on_click)
     xy_canvas.draw()
 
     # Mouse bindings
     xy_canvas.mpl_connect("scroll_event", on_scroll)
-    xy_canvas.mpl_connect("button_press_event", on_press)
+    xy_canvas.mpl_connect("button_press_event", handle_mouse_clicks)
     xy_canvas.mpl_connect("button_release_event", on_release)
     xy_canvas.mpl_connect("motion_notify_event", on_motion)
 
@@ -356,11 +405,11 @@ def update_objects(ob_r, ob_rad, ob_width):
     # Apply scan angle to object local positions
     ob_x = ob_r * np.cos(ob_rad + scan_theta_rad)
     ob_y = ob_r * np.sin(ob_rad + scan_theta_rad)
-    
+
     # Shift object positions forward by 10 cm (from scanner to front of CyBot)
     ob_x += 10 * np.cos(np.radians(heading))
     ob_y += 10 * np.sin(np.radians(heading))
-    
+
     # Transform to global position
     ob_x += position[0]
     ob_y += position[1]
