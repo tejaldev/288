@@ -43,6 +43,8 @@ objects_color = []
 scan_theta = 0.0
 update_object_flag = False
 
+bump_flag = False
+
 terminal_output = None
 message_log = deque(maxlen=5)
 scan_complete = True
@@ -154,22 +156,24 @@ def clear_all():
 def key_down(event):
     global curr_keys, first_key, key_is_pressed, scan_complete
     # Handle one-shot scan ('s') immediately
-    if event.char == 's':
-        if scan_complete:
-            scan_complete = False
-            command_queue.put('s')
-            return
-    elif event.char not in curr_keys:
-        curr_keys.add(event.char)
+    if not bump_flag:
+        if event.char == 's':
+            if scan_complete:
+                scan_complete = False
+                command_queue.put('s')
+                return
+        elif event.char not in curr_keys:
+            curr_keys.add(event.char)
 
-        #Lock other commands
-        if first_key is None and event.char in ['w', 'a', 'd', 'b', 'q']:
-            first_key = event.char
-            key_is_pressed = True
-            command_queue.put(event.char)
+            #Lock other commands
+            if first_key is None and event.char in ['w', 'a', 'd', 'b', 'q']:
+                first_key = event.char
+                key_is_pressed = True
+                command_queue.put(event.char)
 
 def key_up(event):
     global curr_keys, first_key, key_is_released, update_gui
+    
     if event.char in curr_keys:
         curr_keys.remove(event.char)
         if event.char == first_key:
@@ -451,6 +455,7 @@ def read_cybot(cybot):
     global previous_angle
     global scan_theta, update_object_flag
     global scan_complete
+    global bump_flag
 
     previous_distance = 0.0
     previous_angle = 0.0
@@ -489,6 +494,7 @@ def read_cybot(cybot):
             # Movement data handling
             elif decoded[0] in ('w', 'a', 'd'):
                 while decoded != "END":
+                    
                     # Match movement updates
                     rx_message = cybot.readline()
                     decoded_line = rx_message.decode().strip()
@@ -524,6 +530,7 @@ def read_cybot(cybot):
 
                     elif event_match:
                         event_type = event_match.group(1)  # Either "OB" or "Hole"
+                        bump_flag = True
                         color = 'blue' if event_type == 'OB' else 'yellow'
                         direction_match = re.search(r"(Front Left|Front Right|Rear Left|Rear Right|Front|Rear|Left|Right)", decoded_line)
                         if direction_match:
@@ -544,6 +551,7 @@ def read_cybot(cybot):
                             objects[1].append(hazard_y)
 
                     elif bump_match:
+                        bump_flag = True
                         side = bump_match.group(1)  # "left" or "right"
                         bump_angle = heading + (90 if side == "left" else -90)
                         bump_dx = 17 * np.cos(np.radians(bump_angle))
@@ -559,6 +567,7 @@ def read_cybot(cybot):
                         backward_distance = float(back_match.group(1))
                         update_position(-backward_distance)
                         update_gui = True
+                        bump_flag = False
                     
                     decoded = decoded_line
 
@@ -577,8 +586,8 @@ def socket_thread():
     global key_is_released
     global update_gui
 
-    #HOST = "192.168.1.1"  # Use this if using the actual Cybot
-    HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
+    HOST = "192.168.1.1"  # Use this if using the actual Cybot
+    #HOST = "127.0.0.1"  # Use this if using the MOCK Cybot
     PORT = 288          # The port used by the server
     cybot_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     cybot_socket.connect((HOST, PORT))
